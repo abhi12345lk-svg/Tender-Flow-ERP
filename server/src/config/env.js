@@ -14,12 +14,20 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/tender
 const JWT_SECRET = process.env.JWT_SECRET || 'tenderflow_erp_jwt_secret_dev_key_replace_in_production_32chars!';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
-// Parse CLIENT_URL into array of origins
-const rawClientUrl = process.env.CLIENT_URL || 'http://localhost:3000,http://localhost:5173';
-const CLIENT_URLS = rawClientUrl
-  .split(',')
-  .map((url) => url.trim())
-  .filter(Boolean);
+// Parse CLIENT_URL and FRONTEND_URL into array of permitted origins
+const rawClientUrls = [process.env.CLIENT_URL, process.env.FRONTEND_URL, 'http://localhost:3000,http://localhost:5173']
+  .filter(Boolean)
+  .join(',');
+const CLIENT_URLS = Array.from(
+  new Set(
+    rawClientUrls
+      .split(',')
+      .map((url) => url.trim().replace(/\/$/, ''))
+      .filter(Boolean)
+  )
+);
+
+const FILE_STORAGE_PROVIDER = process.env.FILE_STORAGE_PROVIDER || 'local';
 
 // Validate required production configurations
 if (NODE_ENV === 'production') {
@@ -38,6 +46,7 @@ export const config = {
   jwtSecret: JWT_SECRET,
   jwtExpiresIn: JWT_EXPIRES_IN,
   clientUrls: CLIENT_URLS,
+  fileStorageProvider: FILE_STORAGE_PROVIDER,
   initialAdmin: {
     email: process.env.INITIAL_ADMIN_EMAIL || 'admin@tenderflow.gov.in',
     password: process.env.INITIAL_ADMIN_PASSWORD || 'AdminSecurePass@2024',

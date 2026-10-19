@@ -26,7 +26,12 @@ export const createApp = () => {
       origin: (origin, callback) => {
         // Allow requests with no origin (e.g., mobile apps, curl, server-to-server)
         if (!origin) return callback(null, true);
-        if (config.clientUrls.includes(origin) || config.env === 'development') {
+
+        const isExplicitlyAllowed = config.clientUrls.includes(origin);
+        const isVercelDomain = /\.vercel\.app$/i.test(new URL(origin).hostname);
+        const isDev = config.env === 'development';
+
+        if (isExplicitlyAllowed || isVercelDomain || isDev) {
           return callback(null, true);
         }
         return callback(new Error(`Origin ${origin} not allowed by CORS policy`), false);

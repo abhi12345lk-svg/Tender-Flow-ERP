@@ -10,7 +10,8 @@
     "server": "node --watch server/src/server.js",
     "server:start": "node server/src/server.js",
     "server:test": "npm --prefix server test",
-    "server:seed": "npm --prefix server run seed"
+    "server:seed": "npm --prefix server run seed",
+    "audit": "node scripts/audit-production.js"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

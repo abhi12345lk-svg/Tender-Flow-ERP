@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: tenderflow-erp-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node src/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: CLIENT_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: FILE_STORAGE_PROVIDER
+        value: local
+      - key: INITIAL_ADMIN_EMAIL
+        value: admin@tenderflow.gov.in
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false
+      - key: INITIAL_ADMIN_NAME
+        value: Er. Rajesh Sharma
+      - key: INITIAL_ADMIN_ROLE
+        value: Admin

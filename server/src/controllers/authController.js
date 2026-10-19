@@ -32,7 +32,7 @@ export const login = async (req, res, next) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: config.env === 'production',
-      sameSite: config.env === 'production' ? 'strict' : 'lax',
+      sameSite: config.env === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
@@ -63,7 +63,7 @@ export const logout = async (req, res, next) => {
     res.clearCookie('token', {
       httpOnly: true,
       secure: config.env === 'production',
-      sameSite: config.env === 'production' ? 'strict' : 'lax',
+      sameSite: config.env === 'production' ? 'none' : 'lax',
     });
     return successResponse(res, null, 'Logged out successfully');
   } catch (err) {

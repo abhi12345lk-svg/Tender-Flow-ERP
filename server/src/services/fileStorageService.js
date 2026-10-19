@@ -3,6 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
+import { config } from '../config/env.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -11,6 +13,10 @@ const UPLOADS_DIR = path.resolve(__dirname, '../../uploads');
 // Ensure uploads directory exists
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+if (config.env === 'production' && config.fileStorageProvider === 'local') {
+  console.info('[FileStorage Advisory] Local filesystem storage is active. For persistent storage across Render redeployments, attach a Render Persistent Disk at /server/uploads or configure S3_BUCKET_NAME.');
 }
 
 // Storage engine
