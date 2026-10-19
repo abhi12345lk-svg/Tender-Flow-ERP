@@ -1,179 +1,229 @@
 # TenderFlow ERP — Government Works Management System
 
-A production-quality Government Works Management ERP frontend built for Public Works Divisions, Municipal Corporations, and Infrastructure Authorities to streamline Work Orders, Agreements, Contractor Billing, Subdivisions, and Tender Security (FMD / SD) custody.
+A production-quality Government Works Management ERP built for Public Works Divisions, Municipal Corporations, and Infrastructure Authorities to streamline Work Orders, Agreements, Contractor Billing, Subdivisions, and Tender Security (FMD / SD) custody.
 
 ---
 
-## 🏗️ Step 1 Architecture & Tech Stack
+## 🏗️ Architecture & Technology Stack
 
+### Frontend (Step 1):
 - **Framework**: React 18 with Vite
 - **Language**: JavaScript (ESModules) — *no TypeScript*
 - **Styling**: Tailwind CSS with custom government design tokens (Dark Navy `#070d1e`, Gov Blue `#1d4ed8`, Slate `#f8fafc`)
 - **Routing**: React Router v6
 - **Icons**: Lucide React
-- **Typography**: Inter (Google Fonts)
+- **API Client**: Centralized REST client with automatic authentication token and cookie propagation
+
+### Backend (Step 2):
+- **Runtime & Framework**: Node.js & Express.js (ESModules)
+- **Database**: MongoDB Atlas / Local MongoDB with Mongoose ODM
+- **Validation**: Zod schema validation middleware
+- **Security**: Helmet, CORS with explicit whitelist, Express-Rate-Limit, bcrypt password hashing
+- **Authentication**: JWT authentication with HttpOnly cookies & Bearer token support
+- **Testing**: Automated test suite with 23 passing tests covering all models and endpoints
 
 ---
 
 ## 🏢 Business Modules (Exactly 6 Core Modules)
 
-1. **Financial Year (`/financial-year`)**
-   - Fiscal cycle configuration with start/end date boundary validation.
-   - Global active Financial Year context switcher in Topbar.
-   - In-memory government fiscal cycles (e.g. FY 2024-2025, 2025-2026, 2023-2024).
+1. **Financial Year (`/api/v1/financial-years`)**
+   - Fiscal cycle configuration with start/end date range boundary validation.
+   - Non-overlapping date range protection.
+   - Global active Financial Year context switcher in Topbar and API.
 
-2. **Work Order (`/work-orders`)**
-   - Preserves handwritten required fields and labels:
-     - `Tender Number (M)`
-     - `Work Order Number (M)`
+2. **Work Order (`/api/v1/work-orders`)**
+   - Preserves handwritten specifications and unconfirmed labels:
+     - `Tender Number (M)` *(mandatory)*
+     - `Work Order Number (M)` *(mandatory, unique index)*
      - `Work Order Date`
      - `TD` *(preserved label)*
      - `EMD Number` & `EMD Amount`
      - `Estimate Number`
      - `Work Order Amount` (₹ INR)
      - `SD Amount`
-     - `Status / Options` (Draft, Issued, In Progress, Completed, Terminated)
+     - `Status / Options` (`Draft`, `Issued`, `In Progress`, `Completed`, `Terminated`)
      - `Financial Year` & `Subdivision` associations
-   - Searchable, paginated data table with detailed modal viewer.
+   - Search, filter by status / subdivision / financial year, and pagination.
 
-3. **Agreement (`/agreements`)**
+3. **Agreement (`/api/v1/agreements`)**
    - Bind sanctioned Work Orders to legal contract templates:
-     - PWD Form F-2 (Lump Sum Contract)
+     - Standard PWD Form F-2 (Lump Sum)
      - Item Rate Agreement Form B-1
      - EPC Turnkey Contract Template
    - E-Stamp Duty certificate tracking.
-   - Document editing / clauses entry point.
+   - Contract clauses entry point.
    - Official government printable agreement modal with browser Print-to-PDF engine.
-   - Client-side Word (.doc) draft export (clearly identified for Step 2 dynamic generator).
+   - Client-side Word (.doc) draft export (clearly identified for Step 3 dynamic generator).
 
-4. **Billing (`/billing`)**
+4. **Billing (`/api/v1/billing`)**
    - Running Account (RA) & Final Bill vouchers:
-     - Date of Completion & Date of Handover
-     - Invoice Number & Date
-     - Basic Amount (Excl. GST)
-     - Configurable GST Rate (18% default: CGST 9% + SGST 9%) & auto-calculated Gross Total
-     - Statutory Deduction Form:
-       - Security Deposit (SD) Deduction (5%)
-       - Income Tax TDS (2%)
-       - Labour Cess (1%)
-       - Royalty / Material Withholding
-       - Penalties / Withheld
-     - Net Payable Disbursable Calculation (Gross Total minus Statutory Deductions)
+     - `Date of Completion` & `Date of Handover`
+     - `Invoice Number` (unique) & `Invoice Date`
+     - `Basic Amount` (Excl. GST)
+     - `Configurable GST Rate` (default 18%: CGST 9% + SGST 9%) & auto-calculated Gross Total
+     - `Statutory Deduction Form`: Security Deposit (5%), IT-TDS (2%), Labour Cess (1%), Royalty, Penalties
+     - `Net Payable Disbursable Calculation` (Gross Total minus Statutory Deductions)
      - Related Work Order & Subdivision association.
 
-5. **Subdivision (`/subdivisions`)**
+5. **Subdivision (`/api/v1/subdivisions`)**
    - Administrative sub-unit management:
      - Subdivision Name, Code, In-Charge Officer, Campus
-     - Association inspection mapping linked Work Orders and Billing vouchers.
+     - Linked Work Orders and Billing vouchers inspection.
      - Integrity checks preventing deletion of active operational subdivisions.
 
-6. **FMD / SD (`/fmd-sd`)**
-   - Tender details and related Work Order references.
-   - Keeps `FMD` as `FMD` without inventing fictitious names.
-   - Instrument custody tracking: Bank Guarantee (BG), Fixed Deposit Receipt (FDR), Treasury Challan.
-   - Bilingual Document / Print Format Entry Point with real-time **English / हिंदी (Hindi)** toggle.
-   - Document upload interface with clear Step 1 preview banner (session storage preview; cloud S3 storage arriving in Step 2).
+6. **FMD / SD (`/api/v1/fmd-sd`)**
+   - Preserved strictly as **FMD / SD** without inventing fictitious names.
+   - Financial security instrument custody: Bank Guarantee (BG), Fixed Deposit Receipt (FDR), Treasury Challan.
+   - **Bilingual Document / Print Format Entry Point**: Real-time **English / हिंदी (Hindi)** toggle.
+   - Document upload dropzone storing safe file metadata (no unbounded base64 strings in MongoDB).
 
 ---
 
-## 🚀 Setup & Execution
+## 🚀 Setup & Execution Guide
 
 ### 1. Prerequisites
-- Node.js (v18+ recommended, verified on v24.11.1)
-- npm (v9+ recommended, verified on v11.6.2)
+- **Node.js**: v18+ (verified on v24.11.1)
+- **MongoDB**: Local MongoDB instance listening on port 27017 OR MongoDB Atlas connection string
 
-### 2. Installation
-```bash
-# Clone the repository
-git clone https://github.com/abhi12345lk-svg/Tender-Flow-ERP.git
+### 2. Environment Configuration
+Create or configure `server/.env` based on `server/.env.example`:
 
-# Enter project directory
-cd "Tender Flow ERP"
+```env
+PORT=5000
+NODE_ENV=development
+# For Local MongoDB:
+MONGODB_URI=mongodb://127.0.0.1:27017/tenderflow_erp
+# For MongoDB Atlas:
+# MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/tenderflow_erp?retryWrites=true&w=majority
 
-# Install dependencies
-npm install
+JWT_SECRET=tenderflow_erp_jwt_secret_dev_key_replace_in_production_32chars!
+JWT_EXPIRES_IN=1d
+CLIENT_URL=http://localhost:3000,http://localhost:5173
+
+# Initial Administrator Seed Credentials
+INITIAL_ADMIN_EMAIL=admin@tenderflow.gov.in
+INITIAL_ADMIN_PASSWORD=AdminSecurePass@2024
+INITIAL_ADMIN_NAME=Er. Rajesh Sharma
+INITIAL_ADMIN_ROLE=Admin
 ```
 
-### 3. Start Development Server
+### 3. Installation
+```bash
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd server && npm install && cd ..
+```
+
+### 4. Running the Application
+
+#### Start Backend Server:
+```bash
+npm run server
+# Or directly inside /server:
+cd server && npm start
+```
+- API Root: `http://localhost:5000/api/v1`
+- Health Check: `http://localhost:5000/api/health`
+
+#### Start Frontend Application:
 ```bash
 npm run dev
 ```
-The application will be live at **`http://localhost:3000/`**.
+- Frontend UI: `http://localhost:3000/`
 
-### 4. Build for Production
+#### Run Backend Test Suite:
 ```bash
-npm run build
+npm run server:test
 ```
-Generates optimized static bundle in `/dist` for deployment to Render or Vercel.
+Executes all 23 integration and model tests against an isolated test database.
+
+#### Run Database Seed Script:
+```bash
+npm run server:seed
+```
+Seeds initial administrator credentials and default government records if the database is empty.
 
 ---
 
-## 📁 Project Structure
+## 📡 REST API Route Catalog
 
-```
-d:/My project/Tender Flow ERP/
-├── index.html
-├── package.json
-├── vite.config.js
-├── tailwind.config.js
-├── postcss.config.js
-├── README.md
-├── .gitignore
-└── src/
-    ├── main.jsx
-    ├── App.jsx
-    ├── components/
-    │   ├── common/
-    │   │   ├── Badge.jsx
-    │   │   ├── Button.jsx
-    │   │   ├── ConfirmDialog.jsx
-    │   │   ├── DataTable.jsx
-    │   │   ├── EmptyState.jsx
-    │   │   ├── Input.jsx
-    │   │   ├── Modal.jsx
-    │   │   ├── Pagination.jsx
-    │   │   ├── Select.jsx
-    │   │   └── Toast.jsx
-    │   └── layout/
-    │       ├── Breadcrumbs.jsx
-    │       ├── Layout.jsx
-    │       ├── Sidebar.jsx
-    │       └── Topbar.jsx
-    ├── context/
-    │   └── AppContext.jsx
-    ├── modules/
-    │   ├── financial-year/
-    │   │   ├── FinancialYearModal.jsx
-    │   │   └── FinancialYearPage.jsx
-    │   ├── work-orders/
-    │   │   ├── WorkOrderDetailModal.jsx
-    │   │   ├── WorkOrderModal.jsx
-    │   │   └── WorkOrdersPage.jsx
-    │   ├── agreements/
-    │   │   ├── AgreementModal.jsx
-    │   │   ├── AgreementPrintPreviewModal.jsx
-    │   │   └── AgreementsPage.jsx
-    │   ├── billing/
-    │   │   ├── BillingDetailModal.jsx
-    │   │   ├── BillingModal.jsx
-    │   │   └── BillingPage.jsx
-    │   ├── subdivisions/
-    │   │   ├── SubdivisionModal.jsx
-    │   │   └── SubdivisionsPage.jsx
-    │   └── fmd-sd/
-    │       ├── FmdSdModal.jsx
-    │       ├── FmdSdPage.jsx
-    │       └── FmdSdPrintModal.jsx
-    ├── routes/
-    │   └── AppRoutes.jsx
-    ├── styles/
-    │   └── index.css
-    └── utils/
-        └── formatters.js
-```
+### System & Health
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health` | Operational health check with database diagnostics |
+
+### Authentication (`/api/v1/auth`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/auth/login` | Administrator login (rate-limited, returns token & sets HttpOnly cookie) |
+| `POST` | `/api/v1/auth/setup-initial-admin` | One-time initial administrator setup (restricted once user exists) |
+| `GET` | `/api/v1/auth/me` | Current authenticated session profile |
+| `POST` | `/api/v1/auth/logout` | Clears authentication session cookie |
+
+### Financial Years (`/api/v1/financial-years`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/financial-years` | List financial years (supports `search`, `status`, `page`, `limit`) |
+| `GET` | `/api/v1/financial-years/:id` | Get single financial year by ID |
+| `POST` | `/api/v1/financial-years` | Create new financial year (validates start/end date range) |
+| `PATCH` | `/api/v1/financial-years/:id` | Update financial year |
+| `DELETE` | `/api/v1/financial-years/:id` | Delete financial year (blocked if active or has associated work orders) |
+| `PATCH` | `/api/v1/financial-years/:id/set-active` | Set global operating financial year |
+
+### Work Orders (`/api/v1/work-orders`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/work-orders` | List work orders (supports `search`, `status`, `financialYear`, `subdivision`, `page`, `limit`) |
+| `GET` | `/api/v1/work-orders/:id` | Get work order details |
+| `POST` | `/api/v1/work-orders` | Create work order (validates mandatory `(M)` fields, numeric amounts) |
+| `PATCH` | `/api/v1/work-orders/:id` | Update work order |
+| `DELETE` | `/api/v1/work-orders/:id` | Delete work order (blocked if associated billing records or agreements exist) |
+
+### Agreements (`/api/v1/agreements`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/agreements` | List agreements (supports `search`, `templateType`, `status`, `page`, `limit`) |
+| `GET` | `/api/v1/agreements/:id` | Get agreement details |
+| `POST` | `/api/v1/agreements` | Bind agreement to sanctioned work order |
+| `PATCH` | `/api/v1/agreements/:id` | Update agreement clauses & details |
+| `DELETE` | `/api/v1/agreements/:id` | Delete agreement |
+
+### Billing (`/api/v1/billing`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/billing` | List bill vouchers (includes aggregate summary: gross, deductions, net) |
+| `GET` | `/api/v1/billing/:id` | Get bill details with statutory deduction breakdown |
+| `POST` | `/api/v1/billing` | Record running account / final bill with configurable GST & deductions |
+| `PATCH` | `/api/v1/billing/:id` | Update bill voucher (recalculates totals) |
+| `DELETE` | `/api/v1/billing/:id` | Delete bill record |
+
+### Subdivisions (`/api/v1/subdivisions`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/subdivisions` | List subdivisions with associated work order and billing counts |
+| `GET` | `/api/v1/subdivisions/:id` | Get subdivision details and linked record IDs |
+| `POST` | `/api/v1/subdivisions` | Create administrative subdivision unit |
+| `PATCH` | `/api/v1/subdivisions/:id` | Update subdivision |
+| `DELETE` | `/api/v1/subdivisions/:id` | Delete subdivision (blocked if work orders are linked) |
+
+### FMD / SD (`/api/v1/fmd-sd`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/fmd-sd` | List tender security and custody records |
+| `GET` | `/api/v1/fmd-sd/:id` | Get FMD / SD record |
+| `POST` | `/api/v1/fmd-sd` | Register FMD / SD instrument |
+| `PATCH` | `/api/v1/fmd-sd/:id` | Update FMD status / validity |
+| `DELETE` | `/api/v1/fmd-sd/:id` | Delete FMD record |
+| `POST` | `/api/v1/fmd-sd/:id/documents` | Upload document metadata reference |
+| `DELETE` | `/api/v1/fmd-sd/:id/documents/:docId` | Remove document metadata reference |
 
 ---
 
-## 📌 Step 1 Notice & Transition to Step 2
-- **Step 1 Scope**: Complete frontend architecture, routing, design system, interactive state, data tables, modals, bilingual print formats, and validation rules.
-- **Backend Persistence**: Express.js REST APIs and MongoDB Atlas integration will be implemented in Step 2.
+## 📋 Business Assumptions for Confirmation (Step 3 Preview)
+1. **Meaning of TD**: Preserved as literal string `TD` in database models and UI forms without inventing an unconfirmed acronym.
+2. **Mandatory Marker `(M)`**: Preserved for Tender Number and Work Order Number.
+3. **GST Calculation**: Configurable tax rate (defaulting to 18%: 9% CGST + 9% SGST).
+4. **FMD Scope**: Preserved strictly as `FMD` without fabricating an unconfirmed definition.
+5. **Storage**: Step 2 records file metadata in MongoDB; binary file hosting (AWS S3 or secure local disk) will be integrated in Step 3.

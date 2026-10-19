@@ -24,7 +24,11 @@ yarn-error.log*
 # Local Env Files
 .env*.local
 .env
+.env.*
+server/.env
+server/.env.*
 .env.production
+!**/.env.example
 
 # IDE / Editor
 .vscode/
