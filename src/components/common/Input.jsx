@@ -56,7 +56,7 @@ export default function Input({
           readOnly={readOnly}
           placeholder={placeholder}
           required={required}
-          className={`block w-full rounded-md border text-sm transition-colors duration-150 sm:leading-6 py-2 ${
+          className={`block w-full rounded-md border text-base sm:text-xs md:text-sm transition-colors duration-150 min-h-[40px] sm:min-h-[36px] py-2 ${
             Icon ? 'pl-9' : prefix ? 'pl-8' : 'pl-3'
           } ${suffix ? 'pr-8' : 'pr-3'} ${
             error

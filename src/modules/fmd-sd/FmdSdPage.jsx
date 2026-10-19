@@ -149,7 +149,7 @@ export default function FmdSdPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
           {selectedItem && (
             <>
               <Button
@@ -157,6 +157,7 @@ export default function FmdSdPage() {
                 icon={Download}
                 onClick={() => handleDownloadWordCertificate(selectedItem, 'hi')}
                 title="Download Hindi Word Certificate"
+                className="flex-1 sm:flex-initial"
               >
                 Word (हिंदी)
               </Button>
@@ -164,8 +165,9 @@ export default function FmdSdPage() {
                 variant="navy"
                 icon={Printer}
                 onClick={() => handleOpenPrint(selectedItem)}
+                className="flex-1 sm:flex-initial shadow-sm"
               >
-                Print Format (Bilingual)
+                Print Format
               </Button>
             </>
           )}
@@ -175,6 +177,7 @@ export default function FmdSdPage() {
               setEditingItem(null);
               setIsModalOpen(true);
             }}
+            className="w-full sm:w-auto shadow-sm"
           >
             Register FMD / SD
           </Button>
@@ -200,11 +203,11 @@ export default function FmdSdPage() {
               placeholder="Search tender #, work order, contractor..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600"
+              className="w-full px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0"
             />
           </div>
 
-          <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[300px] sm:max-h-[400px] lg:max-h-[600px] overflow-y-auto pr-1">
             {filteredFmdList.map((item) => {
               const isSelected = selectedItem?.id === item.id;
               return (
@@ -250,26 +253,27 @@ export default function FmdSdPage() {
         {selectedItem ? (
           <div className="lg:col-span-7 space-y-5">
             {/* Active Record Card */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-slate-900 font-mono">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-sm sm:text-base font-bold text-slate-900 font-mono">
                       {selectedItem.tenderNumber}
                     </h2>
                     <Badge variant={selectedItem.fmdStatus}>{selectedItem.fmdStatus}</Badge>
                   </div>
-                  <p className="text-xs text-slate-600 mt-1">{selectedItem.tenderTitle}</p>
+                  <p className="text-xs text-slate-600 mt-1 line-clamp-2">{selectedItem.tenderTitle}</p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
                   <Button
                     size="sm"
                     variant="outline"
                     icon={Languages}
                     onClick={() => handleOpenPrint(selectedItem)}
+                    className="flex-1 sm:flex-initial"
                   >
-                    Hindi / Eng Format
+                    Hindi / Eng
                   </Button>
                   <Button
                     size="sm"
@@ -278,6 +282,7 @@ export default function FmdSdPage() {
                       setEditingItem(selectedItem);
                       setIsModalOpen(true);
                     }}
+                    className="flex-1 sm:flex-initial"
                   >
                     Edit Record
                   </Button>
@@ -285,7 +290,7 @@ export default function FmdSdPage() {
               </div>
 
               {/* Meta Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 text-xs">
                 <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                   <span className="text-slate-400 block mb-0.5">Related Work Order</span>
                   <span className="font-bold text-slate-800 font-mono">

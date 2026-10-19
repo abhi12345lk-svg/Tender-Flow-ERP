@@ -61,10 +61,10 @@ export default function SubdivisionModal({ isOpen, onClose, onSave, editingSubdi
       size="md"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit}>
+          <Button variant="primary" onClick={handleSubmit} className="w-full sm:w-auto shadow-sm">
             {editingSubdivision ? 'Save Changes' : 'Add Subdivision'}
           </Button>
         </>
@@ -82,7 +82,7 @@ export default function SubdivisionModal({ isOpen, onClose, onSave, editingSubdi
           helperText="Administrative sub-unit name"
         />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <Input
             label="Subdivision Code"
             name="code"

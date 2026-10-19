@@ -128,18 +128,18 @@ export default function WorkOrderModal({ isOpen, onClose, onSave, editingWorkOrd
       size="xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit}>
+          <Button variant="primary" onClick={handleSubmit} className="w-full sm:w-auto shadow-sm">
             {editingWorkOrder ? 'Save Work Order' : 'Issue Work Order'}
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
         {/* Core Government Identifiers */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           <Input
             label="Tender Number (M)"
             name="tenderNumber"
@@ -164,7 +164,7 @@ export default function WorkOrderModal({ isOpen, onClose, onSave, editingWorkOrd
         </div>
 
         {/* Work Description & Contractor */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           <Input
             label="Name of Work / Project Description"
             name="title"
@@ -185,7 +185,7 @@ export default function WorkOrderModal({ isOpen, onClose, onSave, editingWorkOrd
         </div>
 
         {/* Dates and Preserved TD */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <Input
             label="Work Order Date"
             name="workOrderDate"
@@ -216,7 +216,7 @@ export default function WorkOrderModal({ isOpen, onClose, onSave, editingWorkOrd
         </div>
 
         {/* EMD & Financials */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <Input
             label="Work Order Amount"
             name="workOrderAmount"
@@ -252,7 +252,7 @@ export default function WorkOrderModal({ isOpen, onClose, onSave, editingWorkOrd
         </div>
 
         {/* SD Amount & Associations */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Input
             label="SD Amount"
             name="sdAmount"

@@ -119,10 +119,10 @@ export default function FmdSdModal({ isOpen, onClose, onSave, editingItem }) {
       size="xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit}>
+          <Button variant="primary" onClick={handleSubmit} className="w-full sm:w-auto shadow-sm">
             {editingItem ? 'Save Changes' : 'Register FMD / SD'}
           </Button>
         </>
@@ -137,7 +137,7 @@ export default function FmdSdModal({ isOpen, onClose, onSave, editingItem }) {
           <select
             value={formData.workOrderId}
             onChange={handleWorkOrderSelect}
-            className="block w-full rounded-md border border-slate-300 text-xs py-2 px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600"
+            className="block w-full rounded-md border border-slate-300 text-base sm:text-xs py-2 px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="">-- Direct Tender (No Work Order Linked) --</option>
             {workOrders.map((wo) => (
@@ -149,7 +149,7 @@ export default function FmdSdModal({ isOpen, onClose, onSave, editingItem }) {
         </div>
 
         {/* Tender Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
           <Input
             label="Tender Number (M)"
             name="tenderNumber"
@@ -180,7 +180,7 @@ export default function FmdSdModal({ isOpen, onClose, onSave, editingItem }) {
         />
 
         {/* Financial Security Amounts */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           <Input
             label="SD Amount (Security Deposit)"
             name="sdAmount"
@@ -215,7 +215,7 @@ export default function FmdSdModal({ isOpen, onClose, onSave, editingItem }) {
         </div>
 
         {/* Instrument Meta */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           <Select
             label="Instrument Type"
             name="instrumentType"

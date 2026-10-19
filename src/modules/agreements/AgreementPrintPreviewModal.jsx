@@ -19,18 +19,19 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
       subtitle={`Agreement Ref: ${agreement.agreementNumber} | Template: ${agreement.templateType}`}
       size="xl"
       footer={
-        <div className="flex items-center justify-between w-full">
-          <div className="text-xs text-slate-500 flex items-center gap-1.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+          <div className="text-xs text-slate-500 flex items-center justify-center sm:justify-start gap-1.5">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
             <span>Official Government PWD Standard Agreement Format</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={onClose}>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
               Close Preview
             </Button>
             <Button
               variant="outline"
               icon={Download}
+              className="w-full sm:w-auto"
               onClick={() => {
                 const targetId = agreement._id || agreement.id;
                 const safeFilename = `${(agreement.agreementNumber || 'Agreement').replace(/[\/\\]/g, '_')}_Official_Contract.doc`;
@@ -43,7 +44,7 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
             >
               Download Word (.doc)
             </Button>
-            <Button variant="navy" icon={Printer} onClick={handlePrint}>
+            <Button variant="navy" icon={Printer} onClick={handlePrint} className="w-full sm:w-auto shadow-sm">
               Print / Save PDF
             </Button>
           </div>
@@ -64,14 +65,14 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
         {/* Printable Government Document Sheet */}
         <div
           id="printable-document"
-          className="bg-white p-8 border border-slate-300 rounded-lg shadow-sm font-serif text-slate-900 space-y-6 max-w-3xl mx-auto leading-relaxed"
+          className="bg-white p-4 sm:p-8 border border-slate-300 rounded-lg shadow-sm font-serif text-slate-900 space-y-4 sm:space-y-6 max-w-3xl mx-auto leading-relaxed"
         >
           {/* Official Emblem & Header */}
           <div className="text-center border-b-2 border-slate-900 pb-4">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-700">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-slate-700">
               GOVERNMENT OF INDIA / STATE PUBLIC WORKS DEPARTMENT
             </h2>
-            <h3 className="text-base font-extrabold uppercase mt-1">
+            <h3 className="text-sm sm:text-base font-extrabold uppercase mt-1">
               OFFICE OF THE EXECUTIVE ENGINEER, DIVISION NO. 1
             </h3>
             <p className="text-xs text-slate-600 mt-0.5">
@@ -80,7 +81,7 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
           </div>
 
           {/* Reference Meta */}
-          <div className="grid grid-cols-2 text-xs border p-3 rounded bg-slate-50 font-sans gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 text-xs border p-3 rounded bg-slate-50 font-sans gap-2">
             <div>
               <span className="font-semibold text-slate-600 block">Agreement Number:</span>
               <span className="font-bold font-mono text-slate-900">{agreement.agreementNumber}</span>
@@ -119,20 +120,20 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
           </div>
 
           {/* Signatures & Execution Section */}
-          <div className="pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-xs font-sans">
-            <div className="text-left space-y-12">
+          <div className="pt-6 sm:pt-8 border-t border-slate-300 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 text-xs font-sans">
+            <div className="text-left space-y-8 sm:space-y-12">
               <p className="text-slate-500">Signed, Sealed & Delivered by:</p>
               <div>
-                <div className="border-t border-slate-400 w-48 mb-1"></div>
+                <div className="border-t border-slate-400 w-44 sm:w-48 mb-1"></div>
                 <p className="font-bold text-slate-900">{agreement.contractorName}</p>
                 <p className="text-slate-500 text-[11px]">(Signature of Authorized Contractor)</p>
               </div>
             </div>
 
-            <div className="text-right space-y-12 flex flex-col items-end">
+            <div className="text-left sm:text-right space-y-8 sm:space-y-12 flex flex-col sm:items-end">
               <p className="text-slate-500">For and on behalf of the Governor:</p>
               <div>
-                <div className="border-t border-slate-400 w-48 mb-1 ml-auto"></div>
+                <div className="border-t border-slate-400 w-44 sm:w-48 mb-1 sm:ml-auto"></div>
                 <p className="font-bold text-slate-900">Executive Engineer</p>
                 <p className="text-slate-500 text-[11px]">Public Works Division No. 1</p>
               </div>

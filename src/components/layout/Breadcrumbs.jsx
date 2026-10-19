@@ -16,10 +16,10 @@ export default function Breadcrumbs() {
   const pathnames = location.pathname.split('/').filter((x) => x);
 
   return (
-    <nav className="flex items-center space-x-1.5 text-xs text-slate-500" aria-label="Breadcrumb">
+    <nav className="flex items-center space-x-1 sm:space-x-1.5 text-xs text-slate-500 min-w-0" aria-label="Breadcrumb">
       <Link
         to="/work-orders"
-        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+        className="flex items-center gap-1 hover:text-slate-900 transition-colors shrink-0"
         title="Dashboard / Work Orders"
       >
         <Home className="h-3.5 w-3.5 text-slate-400" />
@@ -34,11 +34,14 @@ export default function Breadcrumbs() {
           <React.Fragment key={segment}>
             <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />
             {isLast ? (
-              <span className="font-semibold text-slate-800 capitalize">{displayName}</span>
+              <span className="font-semibold text-slate-800 capitalize truncate max-w-[110px] xs:max-w-[150px] sm:max-w-none" title={displayName}>
+                {displayName}
+              </span>
             ) : (
               <Link
                 to={`/${pathnames.slice(0, index + 1).join('/')}`}
-                className="hover:text-slate-900 transition-colors capitalize"
+                className="hover:text-slate-900 transition-colors capitalize truncate max-w-[80px] sm:max-w-none"
+                title={displayName}
               >
                 {displayName}
               </Link>

@@ -134,20 +134,22 @@ export default function SubdivisionsPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew}>
+        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
           Add Subdivision
         </Button>
       </div>
 
       {/* Subdivision Selector / Filter Toolbar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
-          <Network className="h-4 w-4 text-blue-600 shrink-0" />
-          <span className="text-xs font-semibold text-slate-700">Subdivision Selector:</span>
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+            <Network className="h-4 w-4 text-blue-600 shrink-0" />
+            <span>Subdivision Selector:</span>
+          </div>
           <select
             value={selectedSubdivisionId}
             onChange={(e) => setSelectedSubdivisionId(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:border-blue-600 min-w-[200px]"
+            className="px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:border-blue-600 w-full sm:min-w-[220px] min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="ALL">All Subdivisions ({subdivisions.length})</option>
             {subdivisions.map((s) => (
@@ -158,8 +160,8 @@ export default function SubdivisionsPage() {
           </select>
         </div>
 
-        <div className="text-xs text-slate-500">
-          Total Subdivisions: <strong className="text-slate-800">{subdivisions.length}</strong>
+        <div className="text-xs text-slate-500 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex items-center justify-between sm:justify-end">
+          <span>Total Subdivisions: <strong className="text-slate-800">{subdivisions.length}</strong></span>
         </div>
       </div>
 

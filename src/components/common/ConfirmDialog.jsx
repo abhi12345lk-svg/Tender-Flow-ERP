@@ -22,13 +22,14 @@ export default function ConfirmDialog({
       size="sm"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={loading}>
+          <Button variant="secondary" onClick={onClose} disabled={loading} className="w-full sm:w-auto">
             {cancelText}
           </Button>
           <Button
             variant={variant === 'danger' ? 'danger' : 'primary'}
             onClick={onConfirm}
             loading={loading}
+            className="w-full sm:w-auto"
           >
             {confirmText}
           </Button>

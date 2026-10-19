@@ -20,7 +20,8 @@ export default function DataTable({
 }) {
   return (
     <div className={`bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden flex flex-col ${className}`}>
-      <div className="overflow-x-auto min-h-[220px]">
+      {/* Mobile scroll hint */}
+      <div className="overflow-x-auto min-h-[200px] scrollbar-thin scrollbar-thumb-slate-300">
         <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
           <thead className="bg-slate-50 text-slate-700 font-semibold uppercase tracking-wider select-none">
             <tr>
@@ -28,7 +29,7 @@ export default function DataTable({
                 <th
                   key={col.key || idx}
                   scope="col"
-                  className={`px-4 py-3 whitespace-nowrap ${col.headerClassName || ''} ${
+                  className={`px-3 sm:px-4 py-3 whitespace-nowrap text-[11px] sm:text-xs ${col.headerClassName || ''} ${
                     col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                   }`}
                   style={col.width ? { width: col.width } : undefined}
@@ -69,7 +70,7 @@ export default function DataTable({
                   {columns.map((col, colIdx) => (
                     <td
                       key={col.key || colIdx}
-                      className={`px-4 py-2.5 whitespace-nowrap text-slate-700 ${col.cellClassName || ''} ${
+                      className={`px-3 sm:px-4 py-2.5 whitespace-nowrap text-slate-700 text-xs ${col.cellClassName || ''} ${
                         col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                       }`}
                     >

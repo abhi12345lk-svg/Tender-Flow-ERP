@@ -233,61 +233,61 @@ export default function BillingPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew}>
+        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
           Create Bill Voucher
         </Button>
       </div>
 
       {/* Summary Valuation Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+            <span className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider block">
               Gross Billed Amount (with GST)
             </span>
-            <span className="text-lg font-bold text-slate-900 mt-1 block">
+            <span className="text-base sm:text-lg font-bold text-slate-900 mt-1 block">
               {formatCurrency(totalBilledValue)}
             </span>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <Receipt className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+            <span className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider block">
               Statutory Withheld Deductions
             </span>
-            <span className="text-lg font-bold text-rose-600 mt-1 block">
+            <span className="text-base sm:text-lg font-bold text-rose-600 mt-1 block">
               {formatCurrency(totalDeductionsValue)}
             </span>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
             <Calculator className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+            <span className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider block">
               Net Payable Disbursable
             </span>
-            <span className="text-lg font-bold text-emerald-700 mt-1 block">
+            <span className="text-base sm:text-lg font-bold text-emerald-700 mt-1 block">
               {formatCurrency(totalNetValue)}
             </span>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <IndianRupee className="h-5 w-5" />
           </div>
         </div>
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 sm:top-2 h-4 w-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search invoice #, work order, vendor..."
@@ -296,7 +296,7 @@ export default function BillingPage() {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600"
+              className="w-full pl-9 pr-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0"
             />
           </div>
 
@@ -306,7 +306,7 @@ export default function BillingPage() {
               setStatusFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600"
+            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="ALL">All Statuses</option>
             <option value="Draft">Draft</option>
@@ -321,7 +321,7 @@ export default function BillingPage() {
               setSubdivisionFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600"
+            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="ALL">All Subdivisions</option>
             {subdivisions.map((s) => (
@@ -332,8 +332,21 @@ export default function BillingPage() {
           </select>
         </div>
 
-        <div className="text-xs text-slate-500">
-          Showing <strong className="text-slate-800">{filteredBills.length}</strong> bill vouchers
+        <div className="text-xs text-slate-500 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex items-center justify-between sm:justify-end">
+          <span>Showing <strong className="text-slate-800">{filteredBills.length}</strong> bill vouchers</span>
+          {(searchTerm || statusFilter !== 'ALL' || subdivisionFilter !== 'ALL') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('ALL');
+                setSubdivisionFilter('ALL');
+                setCurrentPage(1);
+              }}
+              className="text-blue-600 hover:underline font-medium ml-2 sm:hidden"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 

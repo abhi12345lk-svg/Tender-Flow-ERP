@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+  
   Landmark,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -53,8 +54,14 @@ const NAV_ITEMS = [
   },
 ];
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed, onToggle, onNavigate }) {
   const context = useApp();
+
+  const handleNavClick = () => {
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
 
   return (
     <aside
@@ -80,12 +87,23 @@ export default function Sidebar({ collapsed, onToggle }) {
           )}
         </div>
 
+        {/* Desktop Collapse Button */}
         <button
           onClick={onToggle}
           className="hidden md:flex h-7 w-7 items-center justify-center rounded-md border border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
           title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+
+        {/* Mobile Close Button (Touch target 36x36) */}
+        <button
+          onClick={onToggle}
+          className="flex md:hidden h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white active:bg-slate-700 transition-colors"
+          aria-label="Close navigation drawer"
+          title="Close Navigation"
+        >
+          <ChevronLeft className="h-5 w-5" />
         </button>
       </div>
 
@@ -109,12 +127,13 @@ export default function Sidebar({ collapsed, onToggle }) {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={handleNavClick}
               title={collapsed ? item.name : undefined}
               className={({ isActive }) =>
-                `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition-all duration-150 ${
+                `group flex items-center gap-3 rounded-lg px-3 py-2.5 sm:py-2 text-xs font-medium transition-all duration-150 min-h-[42px] sm:min-h-0 ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-xs font-semibold'
-                    : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+                    : 'text-slate-300 hover:bg-slate-900 hover:text-white active:bg-slate-800'
                 } ${collapsed ? 'justify-center px-2' : ''}`
               }
             >
@@ -143,14 +162,14 @@ export default function Sidebar({ collapsed, onToggle }) {
         {!collapsed ? (
           <div className="rounded-lg bg-slate-900/90 border border-slate-800 p-2.5 text-xs">
             <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="font-semibold text-[11px] text-slate-300">Phase 1 Frontend</span>
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span className="font-semibold text-[11px] text-slate-300">Production Edition</span>
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             </div>
             <p className="text-[11px] text-slate-400">
-              Active FY: <span className="font-medium text-blue-400">{context.activeFY}</span>
+              Active FY: <span className="font-medium text-blue-400">FY {context.activeFY}</span>
             </p>
             <p className="text-[10px] text-slate-500 mt-1">
-              Backend persistence in Step 2
+              Fully Secured & Responsive
             </p>
           </div>
         ) : (

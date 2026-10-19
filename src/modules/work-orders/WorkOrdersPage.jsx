@@ -194,7 +194,7 @@ export default function WorkOrdersPage() {
               Work Order Management
             </h1>
             <span className="text-[10px] bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded">
-              Sample Data
+              Active FY: {useApp().activeFY}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -202,17 +202,17 @@ export default function WorkOrdersPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew}>
+        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
           Create Work Order
         </Button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 sm:top-2 h-4 w-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search by WO#, Tender#, Title, TD..."
@@ -221,7 +221,7 @@ export default function WorkOrdersPage() {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600"
+              className="w-full pl-9 pr-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0"
             />
           </div>
 
@@ -232,7 +232,7 @@ export default function WorkOrdersPage() {
               setStatusFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="px-3 py-1.5 text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600"
+            className="px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="ALL">All Statuses</option>
             <option value="Draft">Draft</option>
@@ -249,7 +249,7 @@ export default function WorkOrdersPage() {
               setSubdivisionFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="px-3 py-1.5 text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600"
+            className="px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="ALL">All Subdivisions</option>
             {subdivisions.map((s) => (
@@ -266,7 +266,7 @@ export default function WorkOrdersPage() {
               setFyFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="px-3 py-1.5 text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600"
+            className="px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="ALL">All Financial Years</option>
             {financialYears.map((fy) => (
@@ -277,7 +277,7 @@ export default function WorkOrdersPage() {
           </select>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 text-xs text-slate-500 pt-2 border-t border-slate-100">
           <span>
             Showing <strong className="text-slate-800">{filteredData.length}</strong> matching work order(s)
           </span>
@@ -290,7 +290,7 @@ export default function WorkOrdersPage() {
                 setFyFilter('ALL');
                 setCurrentPage(1);
               }}
-              className="text-blue-600 hover:underline font-medium"
+              className="text-blue-600 hover:underline font-medium py-1"
             >
               Reset Filters
             </button>

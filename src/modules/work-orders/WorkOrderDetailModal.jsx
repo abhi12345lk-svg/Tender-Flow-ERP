@@ -65,7 +65,7 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
       size="xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Close
           </Button>
           {onEdit && (
@@ -75,6 +75,7 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
                 onClose();
                 onEdit(workOrder);
               }}
+              className="w-full sm:w-auto shadow-sm"
             >
               Edit Work Order
             </Button>
@@ -82,19 +83,19 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
         </>
       }
     >
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
         {/* Title Banner */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               Project Description
             </span>
             <Badge variant={workOrder.status}>{workOrder.status}</Badge>
           </div>
-          <h3 className="text-base font-bold text-slate-900 leading-snug">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
             {workOrder.title || 'Government Infrastructure Work Order'}
           </h3>
-          <div className="mt-2 text-xs text-slate-600 flex items-center gap-1.5">
+          <div className="mt-2 text-xs text-slate-600 flex flex-wrap items-center gap-1.5">
             <span className="font-semibold text-slate-700">Contractor / Agency:</span>
             <span className="text-blue-700 font-medium">
               {workOrder.contractorName || 'Registered PWD Vendor'}
@@ -102,12 +103,12 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 text-xs">
+        {/* Tab Navigation - Scrollable on mobile */}
+        <div className="flex border-b border-slate-200 text-xs overflow-x-auto scrollbar-none">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`px-3 sm:px-4 py-2 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'overview'
                 ? 'border-blue-600 text-blue-600 font-bold'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -119,7 +120,7 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
           <button
             type="button"
             onClick={() => setActiveTab('related')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`px-3 sm:px-4 py-2 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'related'
                 ? 'border-blue-600 text-blue-600 font-bold'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -138,7 +139,7 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
         {activeTab === 'overview' && (
           <div className="space-y-4">
             {/* Core Field Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 text-xs">
               <div className="p-3 border rounded-lg bg-white">
                 <span className="text-slate-400 block mb-0.5">Tender Number (M)</span>
                 <span className="font-mono font-bold text-slate-900">{workOrder.tenderNumber}</span>
@@ -171,13 +172,13 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
             </div>
 
             {/* Financial Valuation Card */}
-            <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/40 space-y-3">
+            <div className="p-3.5 sm:p-4 rounded-xl border border-blue-100 bg-blue-50/40 space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
                 <IndianRupee className="h-4 w-4 text-blue-700" />
                 Financial & Deposit Provisions
               </h4>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 text-xs">
                 <div className="p-3 rounded-lg bg-white border border-blue-200">
                   <span className="text-slate-500 block mb-0.5">Work Order Amount</span>
                   <span className="text-base font-bold text-blue-700">
@@ -204,9 +205,9 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
             </div>
 
             {/* Handover & Timeline */}
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-slate-400" />
+                <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
                 <span className="text-slate-600">Stipulated Date of Completion:</span>
                 <span className="font-semibold text-slate-800">
                   {formatDate(workOrder.stipulatedDateOfCompletion)}
@@ -220,7 +221,7 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
         {activeTab === 'related' && (
           <div className="space-y-4">
             {/* Financial Progress & Execution Summary */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+            <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-700 flex items-center gap-1.5">
                   <TrendingUp className="h-4 w-4 text-blue-600" />
@@ -239,16 +240,16 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-[11px] pt-1">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
+                <div className="p-2 bg-slate-50 rounded border border-slate-100">
                   <span className="text-slate-400 block">Sanctioned WO:</span>
                   <span className="font-bold text-slate-800 font-mono">{formatCurrency(woAmount)}</span>
                 </div>
-                <div>
+                <div className="p-2 bg-slate-50 rounded border border-slate-100">
                   <span className="text-slate-400 block">Total Billed:</span>
                   <span className="font-bold text-emerald-700 font-mono">{formatCurrency(totalBilled)}</span>
                 </div>
-                <div>
+                <div className="p-2 bg-slate-50 rounded border border-slate-100">
                   <span className="text-slate-400 block">Unbilled Balance:</span>
                   <span className="font-bold text-slate-600 font-mono">{formatCurrency(remainingAmount)}</span>
                 </div>

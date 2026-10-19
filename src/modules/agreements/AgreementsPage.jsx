@@ -255,7 +255,7 @@ export default function AgreementsPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew}>
+        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
           New Agreement
         </Button>
       </div>
@@ -305,20 +305,20 @@ export default function AgreementsPage() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           <input
             type="text"
             placeholder="Search agreement #, work order, contractor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-72 px-3 py-1.5 text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600 bg-white"
+            className="w-full sm:w-72 px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600 bg-white min-h-[40px] sm:min-h-0"
           />
 
           <select
             value={templateFilter}
             onChange={(e) => setTemplateFilter(e.target.value)}
-            className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600"
+            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="ALL">All Template Forms</option>
             <option value="Standard PWD Contract Form F-2 (Lump Sum)">PWD Form F-2 (Lump Sum)</option>
@@ -326,8 +326,19 @@ export default function AgreementsPage() {
           </select>
         </div>
 
-        <div className="text-xs text-slate-500">
-          Total agreements: <strong className="text-slate-800">{filteredAgreements.length}</strong>
+        <div className="text-xs text-slate-500 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex items-center justify-between sm:justify-end">
+          <span>Total agreements: <strong className="text-slate-800">{filteredAgreements.length}</strong></span>
+          {(searchTerm || templateFilter !== 'ALL') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setTemplateFilter('ALL');
+              }}
+              className="text-blue-600 hover:underline font-medium ml-2 sm:hidden"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 

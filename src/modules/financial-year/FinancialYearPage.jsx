@@ -159,49 +159,49 @@ export default function FinancialYearPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew}>
+        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
           Add Financial Year
         </Button>
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+            <span className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider block">
               Active Operating FY
             </span>
-            <span className="text-xl font-bold text-blue-700 mt-1 block">FY {activeFY}</span>
+            <span className="text-lg sm:text-xl font-bold text-blue-700 mt-1 block">FY {activeFY}</span>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <Calendar className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+            <span className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider block">
               Configured Fiscal Cycles
             </span>
-            <span className="text-xl font-bold text-slate-800 mt-1 block">
+            <span className="text-lg sm:text-xl font-bold text-slate-800 mt-1 block">
               {financialYears.length} Years
             </span>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <ShieldCheck className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">
+            <span className="text-[11px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider block">
               Works in Active FY
             </span>
-            <span className="text-xl font-bold text-slate-800 mt-1 block">
+            <span className="text-lg sm:text-xl font-bold text-slate-800 mt-1 block">
               {workOrders.filter((w) => w.financialYear === activeFY).length} Work Orders
             </span>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
             <CheckCircle2 className="h-5 w-5" />
           </div>
         </div>
@@ -209,16 +209,16 @@ export default function FinancialYearPage() {
 
       {/* Table Section */}
       <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <input
             type="text"
             placeholder="Search financial years..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-64 px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-blue-600"
+            className="w-full sm:w-64 px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0"
           />
-          <div className="text-xs text-slate-500">
-            Total records: <strong className="text-slate-800">{filteredYears.length}</strong>
+          <div className="text-xs text-slate-500 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex items-center justify-between sm:justify-end">
+            <span>Total records: <strong className="text-slate-800">{filteredYears.length}</strong></span>
           </div>
         </div>
 

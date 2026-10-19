@@ -37,7 +37,7 @@ export default function Select({
           onChange={onChange}
           disabled={disabled}
           required={required}
-          className={`block w-full rounded-md border text-sm transition-colors duration-150 py-2 pl-3 pr-8 bg-white cursor-pointer ${
+          className={`block w-full rounded-md border text-base sm:text-xs md:text-sm transition-colors duration-150 min-h-[40px] sm:min-h-[36px] py-2 pl-3 pr-8 bg-white cursor-pointer ${
             error
               ? 'border-rose-300 text-rose-900 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
               : 'border-slate-300 text-slate-900 hover:border-slate-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-600'

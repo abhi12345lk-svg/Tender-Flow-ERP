@@ -122,10 +122,10 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
       size="xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit}>
+          <Button variant="primary" onClick={handleSubmit} className="w-full sm:w-auto shadow-sm">
             {editingAgreement ? 'Save Changes' : 'Execute Agreement'}
           </Button>
         </>
@@ -140,7 +140,7 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
           <select
             value={formData.workOrderId}
             onChange={handleWorkOrderSelect}
-            className={`block w-full rounded-md border text-xs py-2 px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+            className={`block w-full rounded-md border text-base sm:text-xs py-2 px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer ${
               errors.workOrderId ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
             }`}
           >
@@ -168,7 +168,7 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
         </div>
 
         {/* Agreement No, Template and Date */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           <Input
             label="Agreement Number"
             name="agreementNumber"
@@ -204,7 +204,7 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
         </div>
 
         {/* Stamp Duty & Document Meta */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           <Input
             label="E-Stamp Duty Certificate No."
             name="stampDutyNumber"

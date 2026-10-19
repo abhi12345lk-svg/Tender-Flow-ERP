@@ -28,10 +28,10 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
       }
       size="xl"
       footer={
-        <div className="flex items-center justify-between w-full">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
           {/* Language Selection Toggle */}
-          <div className="flex items-center gap-2">
-            <Languages className="h-4 w-4 text-blue-600" />
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            <Languages className="h-4 w-4 text-blue-600 shrink-0" />
             <span className="text-xs font-semibold text-slate-700">Language:</span>
             <div className="inline-flex rounded-lg border border-slate-300 p-0.5 bg-slate-100 text-xs">
               <button
@@ -55,13 +55,14 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={onClose}>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
               Close
             </Button>
             <Button
               variant="outline"
               icon={Download}
+              className="w-full sm:w-auto"
               onClick={() => {
                 const targetId = fmdItem._id || fmdItem.id;
                 const lang = isHindi ? 'hi' : 'en';
@@ -75,7 +76,7 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
             >
               {isHindi ? 'वर्ड (.doc) डाउनलोड' : 'Download Word (.doc)'}
             </Button>
-            <Button variant="navy" icon={Printer} onClick={handlePrint}>
+            <Button variant="navy" icon={Printer} onClick={handlePrint} className="w-full sm:w-auto shadow-sm">
               {isHindi ? 'मुद्रण / PDF सहेजें' : 'Print / Save PDF'}
             </Button>
           </div>
@@ -96,16 +97,16 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
         {/* Printable Sheet */}
         <div
           id="printable-document"
-          className="bg-white p-8 border border-slate-300 rounded-lg shadow-sm font-serif text-slate-900 space-y-6 max-w-3xl mx-auto leading-relaxed"
+          className="bg-white p-4 sm:p-8 border border-slate-300 rounded-lg shadow-sm font-serif text-slate-900 space-y-4 sm:space-y-6 max-w-3xl mx-auto leading-relaxed"
         >
           {/* Official Header */}
           <div className="text-center border-b-2 border-slate-900 pb-4">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-700">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-slate-700">
               {isHindi
                 ? 'लोक निर्माण विभाग (भवन एवं मार्ग)'
                 : 'PUBLIC WORKS DEPARTMENT (GOVERNMENT OF STATE)'}
             </h2>
-            <h3 className="text-base font-extrabold uppercase mt-1">
+            <h3 className="text-sm sm:text-base font-extrabold uppercase mt-1">
               {isHindi
                 ? 'सुरक्षा जमा (SD) एवं FMD सत्यापन तथा अभिरक्षा प्रमाण-पत्र'
                 : 'SECURITY DEPOSIT (SD) & FMD VERIFICATION AND CUSTODY CERTIFICATE'}
@@ -118,7 +119,7 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
           </div>
 
           {/* Reference Meta Box */}
-          <div className="grid grid-cols-2 text-xs border p-3 rounded bg-slate-50 font-sans gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 text-xs border p-3 rounded bg-slate-50 font-sans gap-2">
             <div>
               <span className="font-semibold text-slate-600 block">
                 {isHindi ? 'निविदा संख्या (Tender No):' : 'Tender Number (M):'}
@@ -152,7 +153,7 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
             <h4 className="font-bold uppercase text-slate-800">
               {isHindi ? 'वित्तीय प्रतिभूति एवं FMD विवरण' : 'Financial Security & FMD Instrument Details'}
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
               <div className="p-2 bg-slate-50 rounded">
                 <span className="text-slate-500 block text-[11px]">SD Amount</span>
                 <span className="font-bold text-slate-900">{formatCurrency(fmdItem.sdAmount)}</span>
@@ -223,7 +224,7 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
               placeholder={isHindi ? "जैसे: बैंक से पुष्टिकरण पत्र दिनांक 12/06/2024 प्राप्त हुआ" : "e.g. Bank confirmation received on dispatch ref 441/Accts"}
               value={editableNotes}
               onChange={(e) => setEditableNotes(e.target.value)}
-              className="w-full text-xs p-2 border border-slate-300 rounded focus:outline-none focus:border-blue-600 font-sans"
+              className="w-full text-base sm:text-xs p-2 border border-slate-300 rounded focus:outline-none focus:border-blue-600 font-sans min-h-[40px] sm:min-h-0"
             />
           </div>
 
@@ -235,15 +236,15 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
           )}
 
           {/* Signature Box */}
-          <div className="pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 text-xs font-sans">
+          <div className="pt-6 sm:pt-8 border-t border-slate-300 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 text-xs font-sans">
             <div>
               <div className="border-t border-slate-400 w-44 mb-1"></div>
               <p className="font-bold text-slate-900">{isHindi ? 'प्रभागीय लेखाकार (DA)' : 'Divisional Accountant'}</p>
               <p className="text-slate-500 text-[11px]">{isHindi ? 'लेखा शाखा, खंड-1' : 'Accounts Branch, Division 1'}</p>
             </div>
 
-            <div className="text-right flex flex-col items-end">
-              <div className="border-t border-slate-400 w-44 mb-1 ml-auto"></div>
+            <div className="text-left sm:text-right flex flex-col sm:items-end">
+              <div className="border-t border-slate-400 w-44 mb-1 sm:ml-auto"></div>
               <p className="font-bold text-slate-900">{isHindi ? 'कार्यपालक अभियंता' : 'Executive Engineer'}</p>
               <p className="text-slate-500 text-[11px]">{isHindi ? 'लोक निर्माण विभाग' : 'Public Works Department'}</p>
             </div>

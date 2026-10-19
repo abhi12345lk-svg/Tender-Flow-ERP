@@ -76,10 +76,10 @@ export default function FinancialYearModal({ isOpen, onClose, onSave, editingFy 
       size="md"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit}>
+          <Button variant="primary" onClick={handleSubmit} className="w-full sm:w-auto shadow-sm">
             {editingFy ? 'Save Changes' : 'Create Financial Year'}
           </Button>
         </>
@@ -97,7 +97,7 @@ export default function FinancialYearModal({ isOpen, onClose, onSave, editingFy 
           helperText="Format: 4-digit start year followed by hyphen and 4-digit end year"
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <Input
             label="Start Date"
             name="startDate"

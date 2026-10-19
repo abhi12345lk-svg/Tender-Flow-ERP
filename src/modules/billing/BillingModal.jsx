@@ -196,18 +196,18 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
       size="xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit}>
+          <Button variant="primary" onClick={handleSubmit} className="w-full sm:w-auto shadow-sm">
             {editingBilling ? 'Save Bill Record' : 'Record & Calculate Bill'}
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
         {/* Related Work Order & Subdivision Association */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Related Work Order <span className="text-rose-500">*</span>
@@ -215,7 +215,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
             <select
               value={formData.workOrderId}
               onChange={handleWorkOrderSelect}
-              className={`block w-full rounded-md border text-xs py-2 px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+              className={`block w-full rounded-md border text-base sm:text-xs py-2 px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer ${
                 errors.workOrderId ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
               }`}
             >
@@ -243,7 +243,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
         </div>
 
         {/* Invoice Identifiers and Dates */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Input
             label="Invoice Number"
             name="invoiceNumber"
@@ -284,8 +284,8 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
         </div>
 
         {/* Amount, GST, and Total Calculation */}
-        <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
               <Calculator className="h-4 w-4 text-blue-700" />
               Bill Valuation & Configurable GST
@@ -295,7 +295,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
             <Input
               label="Basic Bill Amount (Excl. GST)"
               name="amount"
@@ -327,7 +327,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Total Amount (Incl. GST)
               </label>
-              <div className="rounded-md border border-slate-300 bg-slate-100/90 py-2 px-3 text-sm font-bold text-blue-900 font-mono">
+              <div className="rounded-md border border-slate-300 bg-slate-100/90 py-2 px-3 text-sm font-bold text-blue-900 font-mono min-h-[40px] sm:min-h-0 flex items-center">
                 {formatCurrency(gstCalculations.totalAmount)}
               </div>
               <span className="text-[10px] text-slate-500 mt-1 block">
@@ -338,15 +338,15 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
         </div>
 
         {/* Statutory Deduction Form */}
-        <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
               Statutory Deduction Form (PWD Code Rules)
             </h4>
             <span className="text-[11px] text-slate-500">Deductions withheld at source</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
             <Input
               label="SD Deduction"
               name="sdAmount"
@@ -400,10 +400,10 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
 
           {/* Computed Net Summary */}
           <div className="mt-2 pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-            <div className="text-slate-600">
+            <div className="text-slate-600 text-center sm:text-left">
               Total Deductions: <strong className="text-rose-600">{formatCurrency(netCalculations.totalDeductions)}</strong>
             </div>
-            <div className="text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-md border border-emerald-200">
+            <div className="text-xs sm:text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-md border border-emerald-200 w-full sm:w-auto text-center sm:text-right">
               Net Payable to Contractor: {formatCurrency(netCalculations.netPayable)}
             </div>
           </div>
