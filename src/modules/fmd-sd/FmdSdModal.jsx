@@ -66,11 +66,11 @@ export default function FmdSdModal({ isOpen, onClose, onSave, editingItem }) {
 
   const handleWorkOrderSelect = (e) => {
     const selectedId = e.target.value;
-    const wo = workOrders.find((w) => w.id === selectedId);
+    const wo = workOrders.find((w) => w.id === selectedId || w._id === selectedId);
     if (wo) {
       setFormData((prev) => ({
         ...prev,
-        workOrderId: wo.id,
+        workOrderId: wo._id || wo.id,
         workOrderNumber: wo.workOrderNumber,
         tenderNumber: wo.tenderNumber,
         tenderTitle: wo.title,

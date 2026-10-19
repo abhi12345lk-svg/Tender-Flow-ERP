@@ -53,6 +53,84 @@ async function request(endpoint, options = {}) {
   }
 }
 
+/**
+ * Helper to download binary files with authorization
+ */
+async function downloadBlob(endpoint, defaultFilename = 'download') {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const headers = {};
+  const token = sessionStorage.getItem('tenderflow_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      throw new Error(result?.message || `Download failed with HTTP ${response.status}`);
+    }
+
+    const disposition = response.headers.get('content-disposition');
+    let filename = defaultFilename;
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '').trim();
+      }
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 1000);
+    return { success: true, filename };
+  } catch (err) {
+    console.error('File download error:', err);
+    throw err;
+  }
+}
+
+/**
+ * Helper to upload multipart/form-data with authorization
+ */
+async function uploadFormData(endpoint, formData) {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const headers = {};
+  const token = sessionStorage.getItem('tenderflow_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+      credentials: 'include',
+    });
+
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(result?.message || `Upload failed with HTTP ${response.status}`);
+    }
+    return result;
+  } catch (err) {
+    console.error('File upload error:', err);
+    throw err;
+  }
+}
+
 export const api = {
   // System Health
   health: {
@@ -109,6 +187,7 @@ export const api = {
     create: (data) => request('/agreements', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => request(`/agreements/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id) => request(`/agreements/${id}`, { method: 'DELETE' }),
+    downloadDocx: (id, filename) => downloadBlob(`/agreements/${id}/docx`, filename || `Agreement_${id}.doc`),
   },
 
   // 4. Billing
@@ -145,7 +224,17 @@ export const api = {
     create: (data) => request('/fmd-sd', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => request(`/fmd-sd/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id) => request(`/fmd-sd/${id}`, { method: 'DELETE' }),
+    uploadFile: (id, file) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return uploadFormData(`/fmd-sd/${id}/upload`, fd);
+    },
     addDocument: (id, docData) => request(`/fmd-sd/${id}/documents`, { method: 'POST', body: JSON.stringify(docData) }),
     deleteDocument: (id, docId) => request(`/fmd-sd/${id}/documents/${docId}`, { method: 'DELETE' }),
+    downloadDocument: (id, docId, filename) =>
+      downloadBlob(`/fmd-sd/${id}/documents/${docId}/download`, filename || `Security_Doc_${docId}`),
+    downloadDocx: (id, lang = 'en', filename) =>
+      downloadBlob(`/fmd-sd/${id}/docx?lang=${lang}`, filename || `FMD_Security_Certificate_${id}.doc`),
+    getViewUrl: (id, docId) => `${API_BASE_URL}/fmd-sd/${id}/documents/${docId}/view`,
   },
 };

@@ -1,6 +1,7 @@
 import { WorkOrder } from '../models/WorkOrder.js';
 import { Billing } from '../models/Billing.js';
 import { Agreement } from '../models/Agreement.js';
+import { FmdSd } from '../models/FmdSd.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 
 export const getWorkOrders = async (req, res, next) => {
@@ -63,7 +64,44 @@ export const getWorkOrderById = async (req, res, next) => {
     if (!wo) {
       return errorResponse(res, 'Work Order record not found', 404, 'NotFound');
     }
-    return successResponse(res, wo, 'Work Order retrieved successfully');
+
+    // Retrieve all related government records for complete detail view
+    const [agreements, billingRecords, fmdRecords] = await Promise.all([
+      Agreement.find({ workOrder: wo._id }).select('agreementNumber templateType agreementDate status stampDutyAmount'),
+      Billing.find({ workOrder: wo._id }).select('invoiceNumber invoiceDate amount gstAmount totalAmount totalDeductions netPayable status'),
+      FmdSd.find({ workOrder: wo._id }).select('tenderNumber fmdStatus sdAmount emdAmount instrumentType bankName validityDate'),
+    ]);
+
+    const totalBilled = billingRecords.reduce((acc, b) => acc + (b.totalAmount || 0), 0);
+    const totalNetDisbursed = billingRecords.reduce((acc, b) => acc + (b.netPayable || 0), 0);
+    const summaryData = {
+      totalWorkOrderAmount: wo.workOrderAmount,
+      totalBilled,
+      totalNetDisbursed,
+      remainingAmount: Math.max(0, wo.workOrderAmount - totalBilled),
+      billingProgressPercent: wo.workOrderAmount > 0 ? Math.min(100, Math.round((totalBilled / wo.workOrderAmount) * 100)) : 0,
+      agreementsCount: agreements.length,
+      billingRecordsCount: billingRecords.length,
+      fmdRecordsCount: fmdRecords.length,
+    };
+
+    return successResponse(
+      res,
+      {
+        ...wo.toObject(),
+        agreements,
+        billingRecords,
+        fmdRecords,
+        summary: summaryData,
+        related: {
+          agreements,
+          billingRecords,
+          fmdRecords,
+          summary: summaryData,
+        },
+      },
+      'Work Order retrieved successfully'
+    );
   } catch (err) {
     next(err);
   }

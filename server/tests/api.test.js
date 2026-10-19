@@ -298,8 +298,10 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
   });
 
-  // 6. Agreement CRUD Tests
+  // 6. Agreement CRUD & Document Generation Tests
   describe('Agreement Module (/api/v1/agreements)', () => {
+    let createdAgrId = '';
+
     it('should create agreement bound to existing work order', async () => {
       const wo = await WorkOrder.findOne();
       const res = await request(app)
@@ -319,6 +321,17 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
 
       assert.strictEqual(res.statusCode, 201);
       assert.strictEqual(res.body.data.agreementNumber, 'AGR/TEST/001');
+      createdAgrId = res.body.data._id;
+    });
+
+    it('should generate official Word (.doc) document for agreement', async () => {
+      const res = await request(app)
+        .get(`/api/v1/agreements/${createdAgrId}/docx`);
+
+      assert.strictEqual(res.statusCode, 200);
+      assert.match(res.headers['content-type'], /application\/msword/);
+      assert.match(res.headers['content-disposition'], /attachment; filename=/);
+      assert.match(res.text, /LEGAL ARTICLES OF CONTRACT AGREEMENT/);
     });
   });
 
@@ -355,16 +368,37 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
   });
 
-  // 8. FMD / SD Module Tests (Preserved FMD terminology & document metadata)
+  // 8. Work Order Related Records Verification
+  describe('Work Order Related Records Detail Workflow', () => {
+    it('should return work order with populated related agreements and billing records', async () => {
+      const wo = await WorkOrder.findOne();
+      const res = await request(app).get(`/api/v1/work-orders/${wo._id}`);
+
+      assert.strictEqual(res.statusCode, 200);
+      assert.ok(res.body.data.related);
+      assert.ok(Array.isArray(res.body.data.related.agreements));
+      assert.ok(Array.isArray(res.body.data.related.billingRecords));
+      assert.ok(res.body.data.related.summary);
+      assert.strictEqual(res.body.data.related.summary.agreementsCount, 1);
+      assert.strictEqual(res.body.data.related.summary.billingRecordsCount, 1);
+      assert.strictEqual(res.body.data.related.summary.totalBilled, 118000);
+    });
+  });
+
+  // 9. FMD / SD Module Tests (Preserved FMD terminology, multipart upload, Word certificates)
   describe('FMD / SD Module (/api/v1/fmd-sd)', () => {
     let createdFmdId = '';
+    let uploadedDocId = '';
 
     it('should register FMD / SD tender security record', async () => {
+      const wo = await WorkOrder.findOne();
       const res = await request(app)
         .post('/api/v1/fmd-sd')
         .send({
           tenderNumber: 'TN-FMD-999',
           tenderTitle: 'Construction of Sub-Station',
+          workOrder: wo._id.toString(),
+          workOrderNumber: wo.workOrderNumber,
           fmdStatus: 'Verified & Retained',
           sdAmount: 150000,
           emdAmount: 30000,
@@ -381,18 +415,51 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
       createdFmdId = res.body.data._id;
     });
 
-    it('should add document metadata reference safely without base64 bloat', async () => {
+    it('should generate official bilingual Word (.doc) custody certificates in Hindi and English', async () => {
+      // English certificate
+      const resEn = await request(app).get(`/api/v1/fmd-sd/${createdFmdId}/docx?lang=en`);
+      assert.strictEqual(resEn.statusCode, 200);
+      assert.match(resEn.headers['content-type'], /application\/msword/);
+      assert.match(resEn.text, /SECURITY DEPOSIT/);
+
+      // Hindi certificate with Unicode support
+      const resHi = await request(app).get(`/api/v1/fmd-sd/${createdFmdId}/docx?lang=hi`);
+      assert.strictEqual(resHi.statusCode, 200);
+      assert.match(resHi.headers['content-type'], /application\/msword/);
+      assert.match(resHi.text, /सुरक्षा जमा/);
+    });
+
+    it('should upload real multipart file with MIME validation to server custody', async () => {
+      const fakePdfContent = Buffer.from('%PDF-1.4 test security deposit receipt content');
+
       const res = await request(app)
-        .post(`/api/v1/fmd-sd/${createdFmdId}/documents`)
-        .send({
-          name: 'SBI_BG_Guarantee_Scan.pdf',
-          size: '1.2 MB',
-          type: 'application/pdf',
-        });
+        .post(`/api/v1/fmd-sd/${createdFmdId}/upload`)
+        .attach('file', fakePdfContent, 'SBI_Bank_Guarantee_15Lakhs.pdf');
 
       assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.body.success, true);
       assert.strictEqual(res.body.data.uploadedDocuments.length, 1);
-      assert.strictEqual(res.body.data.uploadedDocuments[0].name, 'SBI_BG_Guarantee_Scan.pdf');
+
+      const uploadedDoc = res.body.data.uploadedDocuments[0];
+      assert.strictEqual(uploadedDoc.name, 'SBI_Bank_Guarantee_15Lakhs.pdf');
+      assert.ok(uploadedDoc.path);
+      uploadedDocId = uploadedDoc._id;
+    });
+
+    it('should stream uploaded file download with proper headers', async () => {
+      const res = await request(app)
+        .get(`/api/v1/fmd-sd/${createdFmdId}/documents/${uploadedDocId}/download`);
+
+      assert.strictEqual(res.statusCode, 200);
+      assert.match(res.headers['content-disposition'], /attachment/);
+    });
+
+    it('should safely delete uploaded file from database and disk storage', async () => {
+      const res = await request(app)
+        .delete(`/api/v1/fmd-sd/${createdFmdId}/documents/${uploadedDocId}`);
+
+      assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.body.data.uploadedDocuments.length, 0);
     });
   });
 });

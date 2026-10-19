@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Printer, Languages, ShieldCheck, FileText, AlertCircle } from 'lucide-react';
+import { Printer, Languages, ShieldCheck, FileText, AlertCircle, Download } from 'lucide-react';
 
 export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
   const [language, setLanguage] = useState('en'); // 'en' or 'hi'
@@ -59,6 +59,22 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
+            <Button
+              variant="outline"
+              icon={Download}
+              onClick={() => {
+                const targetId = fmdItem._id || fmdItem.id;
+                const lang = isHindi ? 'hi' : 'en';
+                const filename = `${(fmdItem.tenderNumber || 'Tender').replace(/[\/\\]/g, '_')}_Custody_Certificate_${lang.toUpperCase()}.doc`;
+                if (targetId && (targetId.length === 24 || targetId.match(/^[0-9a-fA-F]{24}$/))) {
+                  window.open(`http://localhost:5000/api/v1/fmd-sd/${targetId}/docx?lang=${lang}`, '_blank');
+                } else {
+                  window.print();
+                }
+              }}
+            >
+              {isHindi ? 'वर्ड (.doc) डाउनलोड' : 'Download Word (.doc)'}
+            </Button>
             <Button variant="navy" icon={Printer} onClick={handlePrint}>
               {isHindi ? 'मुद्रण / PDF सहेजें' : 'Print / Save PDF'}
             </Button>
@@ -67,12 +83,12 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
       }
     >
       <div className="space-y-4">
-        {/* Step 1 Functional Status Banner */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 flex items-center justify-between no-print">
+        {/* Step 3 Document Status Banner */}
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center justify-between no-print">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-blue-600 shrink-0" />
+            <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
             <span>
-              <strong>FMD / SD Document Format:</strong> Keep FMD as FMD. Supports bilingual print formatting. Browser print engine handles PDF rendering in Step 1.
+              <strong>Bilingual FMD / SD Workflow Active:</strong> Hindi & English printable custody certificate and server-side Microsoft Word (.doc) generation with Unicode text rendering are operational.
             </span>
           </div>
         </div>

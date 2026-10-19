@@ -1,6 +1,7 @@
 import { Agreement } from '../models/Agreement.js';
 import { WorkOrder } from '../models/WorkOrder.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { generateAgreementWordDocument } from '../services/documentTemplateService.js';
 
 export const getAgreements = async (req, res, next) => {
   try {
@@ -135,6 +136,24 @@ export const deleteAgreement = async (req, res, next) => {
       return errorResponse(res, 'Agreement record not found', 404, 'NotFound');
     }
     return successResponse(res, null, `Agreement ${agreement.agreementNumber} deleted successfully`);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const downloadAgreementDocx = async (req, res, next) => {
+  try {
+    const agreement = await Agreement.findById(req.params.id);
+    if (!agreement) {
+      return errorResponse(res, 'Agreement record not found', 404, 'NotFound');
+    }
+
+    const docBuffer = generateAgreementWordDocument(agreement);
+    const sanitizedFilename = `${agreement.agreementNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}_Contract.doc`;
+
+    res.setHeader('Content-Type', 'application/msword');
+    res.setHeader('Content-Disposition', `attachment; filename="${sanitizedFilename}"`);
+    return res.send(docBuffer);
   } catch (err) {
     next(err);
   }

@@ -1,6 +1,10 @@
+import path from 'path';
+import fs from 'fs';
 import { FmdSd } from '../models/FmdSd.js';
 import { WorkOrder } from '../models/WorkOrder.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { getUploadsPath, deleteStoredFile } from '../services/fileStorageService.js';
+import { generateFmdSdWordDocument } from '../services/documentTemplateService.js';
 
 export const getFmdSdList = async (req, res, next) => {
   try {
@@ -88,10 +92,21 @@ export const updateFmdSd = async (req, res, next) => {
 
 export const deleteFmdSd = async (req, res, next) => {
   try {
-    const fmd = await FmdSd.findByIdAndDelete(req.params.id);
+    const fmd = await FmdSd.findById(req.params.id);
     if (!fmd) {
       return errorResponse(res, 'FMD / SD record not found', 404, 'NotFound');
     }
+
+    // Clean up stored files
+    if (fmd.uploadedDocuments && fmd.uploadedDocuments.length > 0) {
+      fmd.uploadedDocuments.forEach((doc) => {
+        if (doc.storageUrl) {
+          deleteStoredFile(doc.storageUrl);
+        }
+      });
+    }
+
+    await FmdSd.findByIdAndDelete(req.params.id);
     return successResponse(res, null, `FMD / SD record for ${fmd.tenderNumber} deleted successfully`);
   } catch (err) {
     next(err);
@@ -99,24 +114,27 @@ export const deleteFmdSd = async (req, res, next) => {
 };
 
 /**
- * Upload document metadata reference (safely stores file descriptor, not raw large base64 bloat)
+ * Handle real multipart file upload
  */
-export const addDocumentMetadata = async (req, res, next) => {
+export const uploadFileDocument = async (req, res, next) => {
   try {
-    const { name, size, type, storageUrl } = req.body;
-    if (!name) {
-      return errorResponse(res, 'File name is required', 400, 'ValidationError');
+    if (!req.file) {
+      return errorResponse(res, 'No file uploaded or file was rejected by filter', 400, 'ValidationError');
     }
 
     const fmd = await FmdSd.findById(req.params.id);
     if (!fmd) {
+      // Clean up orphaned upload
+      deleteStoredFile(req.file.filename);
       return errorResponse(res, 'FMD / SD record not found', 404, 'NotFound');
     }
 
     const newDoc = {
-      name,
-      size: size || 'Unknown',
-      type: type || 'application/pdf',
+      name: req.file.originalname,
+      size: `${(req.file.size / 1024).toFixed(1)} KB`,
+      type: req.file.mimetype,
+      storageUrl: req.file.filename,
+      path: req.file.filename,
       uploadedAt: new Date().toLocaleString('en-IN', {
         day: '2-digit',
         month: 'short',
@@ -124,18 +142,102 @@ export const addDocumentMetadata = async (req, res, next) => {
         hour: '2-digit',
         minute: '2-digit',
       }),
-      storageUrl: storageUrl || '',
     };
 
     fmd.uploadedDocuments.push(newDoc);
     await fmd.save();
 
-    return successResponse(res, fmd, 'Document metadata registered successfully');
+    return successResponse(res, fmd, `File "${req.file.originalname}" uploaded and registered to tender custody.`);
   } catch (err) {
     next(err);
   }
 };
 
+/**
+ * Stream document for download
+ */
+export const downloadDocument = async (req, res, next) => {
+  try {
+    const { id, docId } = req.params;
+    const fmd = await FmdSd.findById(id);
+    if (!fmd) {
+      return errorResponse(res, 'FMD / SD record not found', 404, 'NotFound');
+    }
+
+    const doc = fmd.uploadedDocuments.id(docId);
+    if (!doc) {
+      return errorResponse(res, 'Document not found', 404, 'NotFound');
+    }
+
+    if (!doc.storageUrl) {
+      return errorResponse(res, 'File was a sample record and has no physical storage file.', 404, 'FileNotFound');
+    }
+
+    const filePath = getUploadsPath(doc.storageUrl);
+    if (!fs.existsSync(filePath)) {
+      return errorResponse(res, 'Physical file not found on server storage.', 404, 'FileNotFound');
+    }
+
+    return res.download(filePath, doc.name);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Stream document for inline browser view
+ */
+export const viewDocument = async (req, res, next) => {
+  try {
+    const { id, docId } = req.params;
+    const fmd = await FmdSd.findById(id);
+    if (!fmd) {
+      return errorResponse(res, 'FMD / SD record not found', 404, 'NotFound');
+    }
+
+    const doc = fmd.uploadedDocuments.id(docId);
+    if (!doc || !doc.storageUrl) {
+      return errorResponse(res, 'Document physical file not found', 404, 'NotFound');
+    }
+
+    const filePath = getUploadsPath(doc.storageUrl);
+    if (!fs.existsSync(filePath)) {
+      return errorResponse(res, 'Physical file missing from storage directory', 404, 'FileNotFound');
+    }
+
+    res.setHeader('Content-Type', doc.type || 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${doc.name}"`);
+    return fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Generate Word (.doc) verification certificate
+ */
+export const downloadFmdSdDocx = async (req, res, next) => {
+  try {
+    const fmd = await FmdSd.findById(req.params.id);
+    if (!fmd) {
+      return errorResponse(res, 'FMD / SD record not found', 404, 'NotFound');
+    }
+
+    const language = req.query.lang || fmd.language || 'en';
+    const docBuffer = generateFmdSdWordDocument(fmd, language);
+    const sanitizedFilename = `FMD_SD_${fmd.tenderNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}_Verification.doc`;
+
+    res.setHeader('Content-Type', 'application/msword');
+    res.setHeader('Content-Disposition', `attachment; filename="${sanitizedFilename}"`);
+    return res.send(docBuffer);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Delete document metadata and remove file from disk
+ */
 export const deleteDocumentMetadata = async (req, res, next) => {
   try {
     const { id, docId } = req.params;
@@ -144,10 +246,16 @@ export const deleteDocumentMetadata = async (req, res, next) => {
       return errorResponse(res, 'FMD / SD record not found', 404, 'NotFound');
     }
 
+    const doc = fmd.uploadedDocuments.id(docId);
+    const fileStorageRef = doc?.storageUrl || doc?.path;
+    if (fileStorageRef) {
+      deleteStoredFile(fileStorageRef);
+    }
+
     fmd.uploadedDocuments = fmd.uploadedDocuments.filter((d) => d._id.toString() !== docId);
     await fmd.save();
 
-    return successResponse(res, fmd, 'Document reference removed successfully');
+    return successResponse(res, fmd, 'Document deleted from custody storage');
   } catch (err) {
     next(err);
   }

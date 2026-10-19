@@ -36,5 +36,6 @@ server/.env.*
 *.swp
 *.swo
 
-# OS
-Thumbs.db
+# Uploads
+server/uploads/*
+!server/uploads/.gitkeep

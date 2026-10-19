@@ -92,16 +92,17 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
 
   const handleWorkOrderSelect = (e) => {
     const selectedId = e.target.value;
-    const wo = workOrders.find((w) => w.id === selectedId);
+    const wo = workOrders.find((w) => w.id === selectedId || w._id === selectedId);
     if (wo) {
       setFormData((prev) => ({
         ...prev,
-        workOrderId: wo.id,
+        workOrderId: wo._id || wo.id,
         workOrderNumber: wo.workOrderNumber,
         tenderNumber: wo.tenderNumber,
         contractorName: wo.contractorName || 'Registered Agency',
         subdivisionId: wo.subdivisionId || prev.subdivisionId,
         subdivisionName: wo.subdivisionName || prev.subdivisionName,
+        financialYear: wo.financialYear || prev.financialYear || '',
       }));
     } else {
       setFormData((prev) => ({
@@ -116,7 +117,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
 
   const handleSubdivisionChange = (e) => {
     const subId = e.target.value;
-    const found = subdivisions.find((s) => s.id === subId);
+    const found = subdivisions.find((s) => s.id === subId || s._id === subId);
     setFormData((prev) => ({
       ...prev,
       subdivisionId: subId,

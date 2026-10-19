@@ -83,6 +83,7 @@ const fmdSdSchema = new mongoose.Schema(
         type: { type: String, default: 'application/pdf' },
         uploadedAt: { type: String, default: '' },
         storageUrl: { type: String, default: '' },
+        path: { type: String, default: '' },
       },
     ],
   },

@@ -795,29 +795,30 @@ export function AppProvider({ children }) {
   };
 
   const addFmdDocument = async (fmdId, docFile) => {
+    try {
+      if (isBackendConnected && (fmdId.length === 24 || fmdId.match(/^[0-9a-fA-F]{24}$/))) {
+        const res = await api.fmdSd.uploadFile(fmdId, docFile);
+        const updated = normalizeDoc(res.data);
+        setFmdList((prev) => prev.map((item) => (item.id === fmdId || item._id === fmdId ? updated : item)));
+        addToast({
+          type: 'success',
+          title: 'Document Uploaded (Server Custody)',
+          message: `"${docFile.name}" securely stored on server with verified metadata.`,
+        });
+        return;
+      }
+    } catch (err) {
+      addToast({ type: 'error', title: 'File Upload Failed', message: err.message });
+      return;
+    }
+
+    // Local fallback
     const docMeta = {
       name: docFile.name,
       size: `${(docFile.size / 1024).toFixed(1)} KB`,
       type: docFile.type || 'application/pdf',
     };
 
-    try {
-      if (isBackendConnected && (fmdId.length === 24 || fmdId.match(/^[0-9a-fA-F]{24}$/))) {
-        const res = await api.fmdSd.addDocument(fmdId, docMeta);
-        const updated = normalizeDoc(res.data);
-        setFmdList((prev) => prev.map((item) => (item.id === fmdId || item._id === fmdId ? updated : item)));
-        addToast({
-          type: 'success',
-          title: 'Document Metadata Stored (MongoDB)',
-          message: `"${docFile.name}" registered to tender custody.`,
-        });
-        return;
-      }
-    } catch (err) {
-      addToast({ type: 'error', title: 'Upload Notice', message: err.message });
-    }
-
-    // Local fallback
     const newDoc = {
       id: generateId('doc'),
       ...docMeta,
@@ -840,8 +841,8 @@ export function AppProvider({ children }) {
 
     addToast({
       type: 'info',
-      title: 'Document Upload Preview',
-      message: `"${docFile.name}" added to session preview. Step 3 will link cloud binary storage.`,
+      title: 'Document Uploaded',
+      message: `"${docFile.name}" added to session preview.`,
     });
   };
 

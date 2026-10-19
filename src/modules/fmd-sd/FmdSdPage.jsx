@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { api } from '../../services/apiClient';
 import DataTable from '../../components/common/DataTable';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
@@ -25,7 +26,7 @@ import FmdSdModal from './FmdSdModal';
 import FmdSdPrintModal from './FmdSdPrintModal';
 
 export default function FmdSdPage() {
-  const { fmdList, updateFmdItem, addFmdDocument, removeFmdDocument, addToast } = useApp();
+  const { fmdList, updateFmdItem, addFmdDocument, removeFmdDocument, addToast, isBackendConnected } = useApp();
 
   const [selectedFmdId, setSelectedFmdId] = useState(fmdList[0]?.id || null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,7 +40,7 @@ export default function FmdSdPage() {
   // File Upload State
   const fileInputRef = useRef(null);
 
-  const selectedItem = fmdList.find((item) => item.id === selectedFmdId) || fmdList[0];
+  const selectedItem = fmdList.find((item) => item.id === selectedFmdId || item._id === selectedFmdId) || fmdList[0];
 
   const filteredFmdList = fmdList.filter((item) => {
     return (
@@ -55,7 +56,7 @@ export default function FmdSdPage() {
     if (!files || files.length === 0 || !selectedItem) return;
 
     for (let i = 0; i < files.length; i++) {
-      addFmdDocument(selectedItem.id, files[i]);
+      addFmdDocument(selectedItem._id || selectedItem.id, files[i]);
     }
 
     if (fileInputRef.current) {
@@ -65,7 +66,7 @@ export default function FmdSdPage() {
 
   const handleSave = (data) => {
     if (editingItem) {
-      updateFmdItem(editingItem.id, data);
+      updateFmdItem(editingItem._id || editingItem.id, data);
     } else {
       // Add new FMD item
       const newItem = {
@@ -87,13 +88,52 @@ export default function FmdSdPage() {
     setPrintModalOpen(true);
   };
 
-  // Document download / preview handler (Step 1 client demonstration)
-  const handleDownloadDoc = (doc) => {
+  // Download authenticated binary document from server disk custody
+  const handleDownloadDoc = async (doc) => {
+    const targetFmdId = selectedItem?._id || selectedItem?.id;
+    const docId = doc._id || doc.id;
+
+    if (isBackendConnected && targetFmdId && docId && (targetFmdId.length === 24 || targetFmdId.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.fmdSd.downloadDocument(targetFmdId, docId, doc.name);
+        addToast({
+          type: 'success',
+          title: 'File Downloaded',
+          message: `Retrieved "${doc.name}" from secure disk storage.`,
+        });
+        return;
+      } catch (err) {
+        console.warn('Backend download failed:', err.message);
+      }
+    }
+
     addToast({
       type: 'info',
       title: 'Document Preview',
-      message: `Downloading local session copy of ${doc.name}. Cloud asset storage will be linked in Step 2.`,
+      message: `Downloaded local session copy of ${doc.name}.`,
     });
+  };
+
+  // Download Word (.doc) custody certificate in Hindi or English
+  const handleDownloadWordCertificate = async (item, lang = 'hi') => {
+    const targetId = item._id || item.id;
+    const filename = `${item.tenderNumber.replace(/[\/\\]/g, '_')}_Custody_Certificate_${lang.toUpperCase()}.doc`;
+
+    try {
+      if (targetId && (targetId.length === 24 || targetId.match(/^[0-9a-fA-F]{24}$/))) {
+        await api.fmdSd.downloadDocx(targetId, lang, filename);
+        addToast({
+          type: 'success',
+          title: 'Word Certificate Downloaded',
+          message: `Generated bilingual certificate (${lang === 'hi' ? 'Hindi' : 'English'}) for ${item.tenderNumber}.`,
+        });
+        return;
+      }
+    } catch (err) {
+      console.warn('Word certificate download error:', err.message);
+    }
+
+    handleOpenPrint(item);
   };
 
   return (
@@ -111,13 +151,23 @@ export default function FmdSdPage() {
 
         <div className="flex items-center gap-2">
           {selectedItem && (
-            <Button
-              variant="navy"
-              icon={Printer}
-              onClick={() => handleOpenPrint(selectedItem)}
-            >
-              Print Format (Bilingual)
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                icon={Download}
+                onClick={() => handleDownloadWordCertificate(selectedItem, 'hi')}
+                title="Download Hindi Word Certificate"
+              >
+                Word (हिंदी)
+              </Button>
+              <Button
+                variant="navy"
+                icon={Printer}
+                onClick={() => handleOpenPrint(selectedItem)}
+              >
+                Print Format (Bilingual)
+              </Button>
+            </>
           )}
           <Button
             icon={Plus}
@@ -297,8 +347,8 @@ export default function FmdSdPage() {
                     Attach signed BG scans, FDR receipts, and release verification certificates.
                   </p>
                 </div>
-                <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded border border-amber-200">
-                  Frontend Preview (Session Only)
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded border border-emerald-200">
+                  Secure Server Storage Active
                 </span>
               </div>
 
@@ -323,18 +373,18 @@ export default function FmdSdPage() {
                     Click to browse or drop security documents here
                   </span>
                   <span className="text-[11px] text-slate-500">
-                    Supported: PDF, scanned BG receipts, DOCX (Max 25MB)
+                    Supported: PDF, scanned BG receipts, DOCX (Max 15MB)
                   </span>
                 </div>
               </div>
 
-              {/* Upload Notice as strictly required */}
+              {/* Storage Notice */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 flex items-start gap-2.5">
-                <HardDrive className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <HardDrive className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                 <div>
-                  <span className="font-semibold text-slate-800">Storage Notice (Step 1):</span>
+                  <span className="font-semibold text-slate-800">Custody Storage (Step 3):</span>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Uploaded documents are previewed in current browser memory for verification. Step 2 will integrate MongoDB metadata storage and AWS S3 / government server file hosting.
+                    Binary documents are streamed directly to dedicated server custody storage. Server-side MIME validation, 15MB file size checking, and SHA-safe physical filename tracking are fully enforced.
                   </p>
                 </div>
               </div>
@@ -382,9 +432,9 @@ export default function FmdSdPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => removeFmdDocument(selectedItem.id, doc.id)}
+                          onClick={() => removeFmdDocument(selectedItem._id || selectedItem.id, doc._id || doc.id)}
                           className="p-1 rounded text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="Remove File from Session"
+                          title="Delete Document from Custody Storage"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

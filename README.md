@@ -14,13 +14,11 @@ A production-quality Government Works Management ERP built for Public Works Divi
 - **Icons**: Lucide React
 - **API Client**: Centralized REST client with automatic authentication token and cookie propagation
 
-### Backend (Step 2):
-- **Runtime & Framework**: Node.js & Express.js (ESModules)
-- **Database**: MongoDB Atlas / Local MongoDB with Mongoose ODM
-- **Validation**: Zod schema validation middleware
-- **Security**: Helmet, CORS with explicit whitelist, Express-Rate-Limit, bcrypt password hashing
-- **Authentication**: JWT authentication with HttpOnly cookies & Bearer token support
-- **Testing**: Automated test suite with 23 passing tests covering all models and endpoints
+### Document Services & Storage (Step 3 Integration):
+- **Document Generation**: Server-side Microsoft Word (`.doc`) generation engine with standard government formatting, official tables, legal terms, and full Unicode Hindi character support (`Mangal` / `Arial Unicode MS`).
+- **File Upload & Custody Storage**: `multer` file handling service with strict MIME type checking (`.pdf`, `.doc`, `.docx`, images), 15MB size limits, sanitized timestamped filenames, streaming downloads, and physical file deletion upon record removal.
+- **Related Records Workflow**: Dynamic relationship resolution in Work Orders linking related Agreements, Billing vouchers, and FMD / SD records with billing progress realization tracking.
+- **Testing**: Automated end-to-end test suite expanded to 28 passing tests covering all models, workflows, document generation, and file uploads.
 
 ---
 
@@ -30,6 +28,7 @@ A production-quality Government Works Management ERP built for Public Works Divi
    - Fiscal cycle configuration with start/end date range boundary validation.
    - Non-overlapping date range protection.
    - Global active Financial Year context switcher in Topbar and API.
+   - Historical record preservation; no silent record shifting across years.
 
 2. **Work Order (`/api/v1/work-orders`)**
    - Preserves handwritten specifications and unconfirmed labels:
@@ -44,6 +43,7 @@ A production-quality Government Works Management ERP built for Public Works Divi
      - `Status / Options` (`Draft`, `Issued`, `In Progress`, `Completed`, `Terminated`)
      - `Financial Year` & `Subdivision` associations
    - Search, filter by status / subdivision / financial year, and pagination.
+   - Detail view modal showing linked Agreements, Billing vouchers, FMD security records, and financial realization progress bar.
 
 3. **Agreement (`/api/v1/agreements`)**
    - Bind sanctioned Work Orders to legal contract templates:
@@ -53,7 +53,7 @@ A production-quality Government Works Management ERP built for Public Works Divi
    - E-Stamp Duty certificate tracking.
    - Contract clauses entry point.
    - Official government printable agreement modal with browser Print-to-PDF engine.
-   - Client-side Word (.doc) draft export (clearly identified for Step 3 dynamic generator).
+   - Server-side Microsoft Word (`.doc`) document generation (`GET /api/v1/agreements/:id/docx`) populated with live MongoDB Work Order data.
 
 4. **Billing (`/api/v1/billing`)**
    - Running Account (RA) & Final Bill vouchers:
@@ -64,6 +64,7 @@ A production-quality Government Works Management ERP built for Public Works Divi
      - `Statutory Deduction Form`: Security Deposit (5%), IT-TDS (2%), Labour Cess (1%), Royalty, Penalties
      - `Net Payable Disbursable Calculation` (Gross Total minus Statutory Deductions)
      - Related Work Order & Subdivision association.
+     - Automatic calculation guard preventing silent saving of miscalculated totals.
 
 5. **Subdivision (`/api/v1/subdivisions`)**
    - Administrative sub-unit management:
@@ -74,8 +75,9 @@ A production-quality Government Works Management ERP built for Public Works Divi
 6. **FMD / SD (`/api/v1/fmd-sd`)**
    - Preserved strictly as **FMD / SD** without inventing fictitious names.
    - Financial security instrument custody: Bank Guarantee (BG), Fixed Deposit Receipt (FDR), Treasury Challan.
-   - **Bilingual Document / Print Format Entry Point**: Real-time **English / हिंदी (Hindi)** toggle.
-   - Document upload dropzone storing safe file metadata (no unbounded base64 strings in MongoDB).
+   - **Bilingual Document / Print Format**: Real-time **English / हिंदी (Hindi)** toggle.
+   - Official bilingual Word (`.doc`) custody certificate generator (`GET /api/v1/fmd-sd/:id/docx?lang=hi|en`) with full Unicode font support.
+   - Real multipart file upload (`POST /api/v1/fmd-sd/:id/upload`), streaming file download, and physical disk deletion.
 
 ---
 
@@ -137,7 +139,7 @@ npm run dev
 ```bash
 npm run server:test
 ```
-Executes all 23 integration and model tests against an isolated test database.
+Executes all 28 integration, workflow, document generation, and upload tests against an isolated test database.
 
 #### Run Database Seed Script:
 ```bash
@@ -176,7 +178,7 @@ Seeds initial administrator credentials and default government records if the da
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/api/v1/work-orders` | List work orders (supports `search`, `status`, `financialYear`, `subdivision`, `page`, `limit`) |
-| `GET` | `/api/v1/work-orders/:id` | Get work order details |
+| `GET` | `/api/v1/work-orders/:id` | Get work order details including related agreements, billing vouchers & FMD records |
 | `POST` | `/api/v1/work-orders` | Create work order (validates mandatory `(M)` fields, numeric amounts) |
 | `PATCH` | `/api/v1/work-orders/:id` | Update work order |
 | `DELETE` | `/api/v1/work-orders/:id` | Delete work order (blocked if associated billing records or agreements exist) |
@@ -186,6 +188,7 @@ Seeds initial administrator credentials and default government records if the da
 |---|---|---|
 | `GET` | `/api/v1/agreements` | List agreements (supports `search`, `templateType`, `status`, `page`, `limit`) |
 | `GET` | `/api/v1/agreements/:id` | Get agreement details |
+| `GET` | `/api/v1/agreements/:id/docx` | Generate official Microsoft Word (`.doc`) agreement contract |
 | `POST` | `/api/v1/agreements` | Bind agreement to sanctioned work order |
 | `PATCH` | `/api/v1/agreements/:id` | Update agreement clauses & details |
 | `DELETE` | `/api/v1/agreements/:id` | Delete agreement |
@@ -213,17 +216,21 @@ Seeds initial administrator credentials and default government records if the da
 |---|---|---|
 | `GET` | `/api/v1/fmd-sd` | List tender security and custody records |
 | `GET` | `/api/v1/fmd-sd/:id` | Get FMD / SD record |
+| `GET` | `/api/v1/fmd-sd/:id/docx` | Generate bilingual Word (`.doc`) custody certificate (`?lang=hi` or `?lang=en`) |
+| `POST` | `/api/v1/fmd-sd/:id/upload` | Upload real multipart document (PDF, DOC, DOCX, images up to 15MB) |
+| `GET` | `/api/v1/fmd-sd/:id/documents/:docId/download` | Stream uploaded document for download |
+| `GET` | `/api/v1/fmd-sd/:id/documents/:docId/view` | Stream uploaded document for inline browser viewing |
 | `POST` | `/api/v1/fmd-sd` | Register FMD / SD instrument |
 | `PATCH` | `/api/v1/fmd-sd/:id` | Update FMD status / validity |
-| `DELETE` | `/api/v1/fmd-sd/:id` | Delete FMD record |
-| `POST` | `/api/v1/fmd-sd/:id/documents` | Upload document metadata reference |
-| `DELETE` | `/api/v1/fmd-sd/:id/documents/:docId` | Remove document metadata reference |
+| `DELETE` | `/api/v1/fmd-sd/:id` | Delete FMD record and clean up associated physical files |
+| `DELETE` | `/api/v1/fmd-sd/:id/documents/:docId` | Remove document metadata and delete file from disk |
 
 ---
 
-## 📋 Business Assumptions for Confirmation (Step 3 Preview)
+## 📋 Business Assumptions & Rule Confirmations
 1. **Meaning of TD**: Preserved as literal string `TD` in database models and UI forms without inventing an unconfirmed acronym.
 2. **Mandatory Marker `(M)`**: Preserved for Tender Number and Work Order Number.
-3. **GST Calculation**: Configurable tax rate (defaulting to 18%: 9% CGST + 9% SGST).
+3. **GST Calculation**: Kept configurable (defaulting to 18%: 9% CGST + 9% SGST) with transparent base amount display.
 4. **FMD Scope**: Preserved strictly as `FMD` without fabricating an unconfirmed definition.
-5. **Storage**: Step 2 records file metadata in MongoDB; binary file hosting (AWS S3 or secure local disk) will be integrated in Step 3.
+5. **Storage**: Real disk custody storage with MIME filtering and size constraints implemented via `multer`. Cloud storage adapter pattern ready for production deployment.
+

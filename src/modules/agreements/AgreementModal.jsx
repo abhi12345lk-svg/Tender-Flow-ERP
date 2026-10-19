@@ -66,11 +66,11 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
 
   const handleWorkOrderSelect = (e) => {
     const selectedId = e.target.value;
-    const wo = workOrders.find((w) => w.id === selectedId);
+    const wo = workOrders.find((w) => w.id === selectedId || w._id === selectedId);
     if (wo) {
       setFormData((prev) => ({
         ...prev,
-        workOrderId: wo.id,
+        workOrderId: wo._id || wo.id,
         workOrderNumber: wo.workOrderNumber,
         tenderNumber: wo.tenderNumber,
         contractorName: wo.contractorName || 'Registered Agency',
