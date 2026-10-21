@@ -375,7 +375,7 @@ export default function WorkOrdersPage() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         title="Work Order Master Register & Sanction Summary"
-        subtitle={`Public Works Department | Division No. 1 | Active FY: FY ${activeFY || 'ALL'}`}
+        subtitle={`Commercial Project Operations | Active FY: FY ${activeFY || 'ALL'}`}
         reportType="work-orders"
         data={filteredData}
         activeFY={activeFY}

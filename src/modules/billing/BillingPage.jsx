@@ -428,7 +428,7 @@ export default function BillingPage() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         title="Running Account Billing & Tax Scrutiny Register Report"
-        subtitle="Public Works Department | Division No. 1"
+        subtitle="Commercial Project & Billing Operations"
         reportType="billing"
         data={filteredBills}
         onExportExcel={handleExportExcel}

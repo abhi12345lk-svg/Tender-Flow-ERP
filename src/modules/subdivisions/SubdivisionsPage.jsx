@@ -287,7 +287,7 @@ export default function SubdivisionsPage() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         title="Subdivisions Performance & Allocation Summary"
-        subtitle="Public Works Department | Division No. 1"
+        subtitle="Commercial Project Operations & Division Directory"
         reportType="subdivisions"
         data={filteredSubdivisions}
         onExportExcel={handleExportExcel}

@@ -51,14 +51,14 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
         workOrderNumber: defaultWo?.workOrderNumber || '',
         tenderNumber: defaultWo?.tenderNumber || '',
         contractorName: defaultWo?.contractorName || '',
-        templateType: 'Standard PWD Contract Form F-2 (Lump Sum)',
+        templateType: 'EPC Turnkey Infrastructure Contract Template',
         agreementDate: new Date().toISOString().split('T')[0],
         stampDutyNumber: 'E-STAMP-DL24-' + Math.floor(100000 + Math.random() * 900000),
         stampDutyAmount: 15000,
         status: 'Active',
         clausesCount: 40,
         documentTitle: defaultWo ? `Agreement for ${defaultWo.title}` : '',
-        content: `MEMORANDUM OF AGREEMENT between Public Works Department and Contractor for execution of works in accordance with sanctioned specifications.`,
+        content: `ARTICLES OF AGREEMENT executed between Principal Employer and Contractor for execution of works in accordance with sanctioned specifications, engineering standards, and contract conditions.`,
       });
     }
     setErrors({});
@@ -185,9 +185,9 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
             value={formData.templateType}
             onChange={(e) => setFormData({ ...formData, templateType: e.target.value })}
             options={[
-              { value: 'Standard PWD Contract Form F-2 (Lump Sum)', label: 'Standard Contract Form F-2 (Lump Sum)' },
-              { value: 'Item Rate Agreement Form B-1', label: 'Item Rate Agreement Form B-1' },
-              { value: 'EPC Turnkey Contract Template', label: 'EPC Turnkey Contract Template' },
+              { value: 'EPC Turnkey Infrastructure Contract Template', label: 'EPC Turnkey Infrastructure Contract Template' },
+              { value: 'Standard Item Rate Agreement Form', label: 'Standard Item Rate Agreement Form' },
+              { value: 'Lump Sum Commercial Contract Agreement', label: 'Lump Sum Commercial Contract Agreement' },
               { value: 'Minor Repair & Maintenance Agreement', label: 'Minor Maintenance Agreement' },
             ]}
           />

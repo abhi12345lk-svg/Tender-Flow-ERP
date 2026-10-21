@@ -678,7 +678,7 @@ export default function FmdSdPage() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         title="FMD & Security Deposit (SD) Custody Register Report"
-        subtitle="Public Works Department | Division No. 1"
+        subtitle="Commercial Project & Treasury Operations"
         reportType="fmd-sd"
         data={fmdList}
         onExportExcel={handleExportExcel}

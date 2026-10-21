@@ -380,7 +380,7 @@ export default function AgreementsPage() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         title="Official Contract Agreements Register Report"
-        subtitle="Public Works Department | Division No. 1"
+        subtitle="Commercial Infrastructure Project & Contract Operations"
         reportType="agreements"
         data={filteredAgreements}
         onExportExcel={handleExportExcel}

@@ -287,7 +287,7 @@ export default function FinancialYearPage() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         title="Financial Year Master Cycle & Fiscal Boundaries Report"
-        subtitle="Public Works Department | Division No. 1"
+        subtitle="Commercial Project Operations & Fiscal Master Registry"
         reportType="financial-year"
         data={filteredYears}
         activeFY={activeFY}
