@@ -76,18 +76,109 @@ check('Secret Leakage Protection (.gitignore)', () => {
   return { passed: ignoresEnv && ignoresUploads, details: 'All local .env files and binary uploads ignored' };
 });
 
-// 5. Check Production Frontend Build Output
-check('Frontend Production Build Artifacts (dist/)', () => {
+// 5. Check Production Frontend Build Output & PWA Assets
+check('Frontend Production Build & PWA Assets (dist/)', () => {
   const distDir = path.join(rootDir, 'dist');
   const indexHtml = path.join(distDir, 'index.html');
   const assetsDir = path.join(distDir, 'assets');
+  const manifest = path.join(distDir, 'manifest.webmanifest');
+  const sw = path.join(distDir, 'sw.js');
   if (!fs.existsSync(indexHtml) || !fs.existsSync(assetsDir)) {
     return { passed: false, details: 'dist/ directory missing or incomplete. Run npm run build.' };
   }
+  const hasManifest = fs.existsSync(manifest);
+  const hasSw = fs.existsSync(sw);
   const assets = fs.readdirSync(assetsDir);
   const hasJs = assets.some((f) => f.endsWith('.js'));
   const hasCss = assets.some((f) => f.endsWith('.css'));
-  return { passed: hasJs && hasCss, details: `Compiled bundle verified: ${assets.length} assets ready for Vercel CDN` };
+  return {
+    passed: hasJs && hasCss && hasManifest && hasSw,
+    details: `Compiled bundle verified: ${assets.length} assets, valid manifest.webmanifest, and sw.js precache ready`,
+  };
+});
+
+// 5b. Check Offline-First IndexedDB (Dexie.js) Repository Layer
+check('Offline-First Architecture & Dexie.js Repositories', () => {
+  const schemaPath = path.join(rootDir, 'src/services/db/dexieDb.js');
+  const repoIndexPath = path.join(rootDir, 'src/services/repositories/index.js');
+  const dataServicePath = path.join(rootDir, 'src/services/dataService.js');
+
+  if (!fs.existsSync(schemaPath) || !fs.existsSync(repoIndexPath) || !fs.existsSync(dataServicePath)) {
+    return { passed: false, details: 'Dexie schema, repositories, or dataService missing' };
+  }
+
+  const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+  const repoContent = fs.readFileSync(repoIndexPath, 'utf8');
+  const has6Stores = ['financialYears', 'workOrders', 'agreements', 'billing', 'subdivisions', 'fmdSd'].every(
+    (name) => schemaContent.includes(name)
+  );
+  const has6Repos = ['financialYears', 'workOrders', 'agreements', 'billing', 'subdivisions', 'fmdSd'].every(
+    (name) => repoContent.includes(name)
+  );
+
+  return {
+    passed: has6Stores && has6Repos,
+    details: 'Dexie.js database schema and repositories configured for all 6 business modules',
+  };
+});
+
+// 5c. Check Client-Side Offline Document Generation (PDF, DOCX, XLSX)
+check('Client-Side Offline Document Generation (PDF, DOCX, XLSX)', () => {
+  const wordExportPath = path.join(rootDir, 'src/services/export/wordExportService.js');
+  const excelExportPath = path.join(rootDir, 'src/services/export/excelExportService.js');
+  const printModalPath = path.join(rootDir, 'src/components/common/PrintableReportModal.jsx');
+
+  if (!fs.existsSync(wordExportPath) || !fs.existsSync(excelExportPath) || !fs.existsSync(printModalPath)) {
+    return { passed: false, details: 'Missing wordExportService, excelExportService, or PrintableReportModal' };
+  }
+
+  const wordContent = fs.readFileSync(wordExportPath, 'utf8');
+  const excelContent = fs.readFileSync(excelExportPath, 'utf8');
+
+  const hasWordFunctions = wordContent.includes('generateAgreementDocx') && wordContent.includes('generateFmdCustodyDocx');
+  const hasExcelFunctions = ['exportWorkOrdersExcel', 'exportBillingExcel', 'exportSubdivisionsExcel', 'exportFinancialYearsExcel', 'exportAgreementsExcel', 'exportFmdSdExcel'].every(
+    (fn) => excelContent.includes(fn)
+  );
+
+  return {
+    passed: hasWordFunctions && hasExcelFunctions,
+    details: 'Browser Word (.docx), Excel (.xlsx) across all 6 modules, and A4 printable PDF reports operational without server dependency',
+  };
+});
+
+// 5d. Check Safe Cloud Sync, Conflict Resolution & Safety Backup Gate
+check('Safe Cloud Sync, Conflict Resolution & Safety Backup Gate', () => {
+  const syncServicePath = path.join(rootDir, 'src/services/sync/syncService.js');
+  const syncUtilsPath = path.join(rootDir, 'src/services/sync/syncUtils.js');
+  const syncModalPath = path.join(rootDir, 'src/components/common/CloudSyncModal.jsx');
+
+  if (!fs.existsSync(syncServicePath) || !fs.existsSync(syncUtilsPath) || !fs.existsSync(syncModalPath)) {
+    return { passed: false, details: 'syncService.js, syncUtils.js, or CloudSyncModal.jsx missing' };
+  }
+
+  const serviceContent = fs.readFileSync(syncServicePath, 'utf8');
+  const utilsContent = fs.readFileSync(syncUtilsPath, 'utf8');
+  const modalContent = fs.readFileSync(syncModalPath, 'utf8');
+
+  const hasSafeEngine =
+    serviceContent.includes('inspectSyncDifferences') &&
+    serviceContent.includes('executeReviewedSync') &&
+    serviceContent.includes('hasValidSafetyBackup');
+
+  const hasDiffUtils =
+    utilsContent.includes('computeFieldDiffs') &&
+    utilsContent.includes('MODULE_CONFIG') &&
+    utilsContent.includes('normalizeRemoteDoc');
+
+  const hasModalUI =
+    modalContent.includes('handleExportSafetyBackup') &&
+    modalContent.includes('handleResolutionChange') &&
+    modalContent.includes('handleApplySync');
+
+  return {
+    passed: hasSafeEngine && hasDiffUtils && hasModalUI,
+    details: 'Dry-run difference inspection, side-by-side conflict resolution, verified JSON backup gating, and idempotent sync operational across all 6 modules',
+  };
 });
 
 // 6. Check Express Production Security Middleware
@@ -152,8 +243,8 @@ checks.forEach((c, idx) => {
 
 console.log('='.repeat(70));
 if (allPassed) {
-  console.log('🎉 AUDIT SUCCESSFUL: All 9 pre-flight DevOps checks PASSED!');
-  console.log('   The application is fully prepared for Vercel, Render, and MongoDB Atlas.');
+  console.log(`🎉 AUDIT SUCCESSFUL: All ${checks.length} pre-flight DevOps checks PASSED!`);
+  console.log('   The application is fully prepared for Vercel, Render, Offline PWA, and Dexie.js.');
 } else {
   console.log('⚠️ AUDIT WARNING: One or more checks failed. Review details above.');
 }

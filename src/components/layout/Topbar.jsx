@@ -10,16 +10,32 @@ import {
   ExternalLink,
   ChevronDown,
   Info,
+  Database,
+  Cloud,
 } from 'lucide-react';
 import Breadcrumbs from './Breadcrumbs';
 import { useApp } from '../../context/AppContext';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import NetworkStatusBadge from './NetworkStatusBadge';
+import DataManagementModal from '../common/DataManagementModal';
+import CloudSyncModal from '../common/CloudSyncModal';
 
 export default function Topbar({ onToggleSidebar }) {
-  const { financialYears, activeFY, setActiveFY, toasts, addToast } = useApp();
+  const {
+    financialYears,
+    activeFY,
+    setActiveFY,
+    toasts,
+    addToast,
+    isSyncModalOpen,
+    setIsSyncModalOpen,
+    openSyncModal,
+    isBackendConnected,
+  } = useApp();
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [dataModalOpen, setDataModalOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const profileRef = useRef(null);
@@ -56,8 +72,26 @@ export default function Topbar({ onToggleSidebar }) {
           <Breadcrumbs />
         </div>
 
-        {/* Right Section: FY Selector, Notifications, Profile */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        {/* Right Section: Network Status, Sync Action, FY Selector, Notifications, Profile */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Visible Online / Offline & Storage Status Badge */}
+          <NetworkStatusBadge />
+
+          {/* User-Controlled Safe Cloud Sync Button */}
+          <button
+            type="button"
+            onClick={openSyncModal}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all hover:shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              isBackendConnected
+                ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+            }`}
+            title="Review differences and safely synchronize with cloud"
+          >
+            <Cloud className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Sync Review</span>
+          </button>
+
           {/* Global Financial Year Quick Selector */}
           <div className="flex items-center gap-1 sm:gap-2 bg-slate-50 px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg border border-slate-200 max-w-[120px] sm:max-w-none">
             <Calendar className="h-3.5 w-3.5 text-blue-600 shrink-0" />
@@ -160,6 +194,17 @@ export default function Topbar({ onToggleSidebar }) {
                   <button
                     onClick={() => {
                       setProfileOpen(false);
+                      setDataModalOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors text-left"
+                  >
+                    <Database className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                    <span>Local Database & Backups</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
                       addToast({
                         type: 'info',
                         title: 'Audit Trail',
@@ -254,6 +299,18 @@ export default function Topbar({ onToggleSidebar }) {
           </div>
         </div>
       </Modal>
+
+      {/* Local Storage & Backup Management Modal */}
+      <DataManagementModal
+        isOpen={dataModalOpen}
+        onClose={() => setDataModalOpen(false)}
+      />
+
+      {/* User-Controlled Safe Cloud Sync & Reconciliation Modal */}
+      <CloudSyncModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+      />
     </>
   );
 }

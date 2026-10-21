@@ -4,6 +4,7 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { api } from '../../services/apiClient';
+import { dataService } from '../../services/dataService';
 import {
   FileText,
   Building,
@@ -16,6 +17,7 @@ import {
   Layers,
   ArrowRight,
   TrendingUp,
+  Printer,
 } from 'lucide-react';
 
 export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdit }) {
@@ -35,12 +37,26 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
 
       try {
         setLoadingRelated(true);
-        const res = await api.workOrders.getById(woId);
-        if (res?.data?.related) {
-          setRelated(res.data.related);
+        let relatedData = null;
+
+        // Try backend if connected
+        try {
+          const res = await api.workOrders.getById(woId);
+          if (res?.data?.related) {
+            relatedData = res.data.related;
+          }
+        } catch {
+          // Offline fallback
         }
+
+        // If backend was not reached or returned empty, compute from local Dexie IndexedDB
+        if (!relatedData) {
+          relatedData = await dataService.getRelatedRecordsForWorkOrder(workOrder);
+        }
+
+        setRelated(relatedData);
       } catch (err) {
-        console.warn('Could not load related records from backend:', err.message);
+        console.warn('Could not load related records:', err.message);
       } finally {
         setLoadingRelated(false);
       }
@@ -64,26 +80,39 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
       subtitle={`Tender Ref: ${workOrder.tenderNumber} | Financial Year: FY ${workOrder.financialYear}`}
       size="xl"
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
-            Close
-          </Button>
-          {onEdit && (
-            <Button
-              variant="primary"
-              onClick={() => {
-                onClose();
-                onEdit(workOrder);
-              }}
-              className="w-full sm:w-auto shadow-sm"
-            >
-              Edit Work Order
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+          <div className="text-[11px] text-slate-500 hidden sm:block">
+            Sanction Ref: <span className="font-mono font-semibold text-slate-800">{workOrder.workOrderNumber}</span>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
+              Close
             </Button>
-          )}
-        </>
+            <Button
+              variant="navy"
+              icon={Printer}
+              onClick={() => window.print()}
+              className="w-full sm:w-auto shadow-sm text-xs"
+            >
+              Print / Save PDF Sanction
+            </Button>
+            {onEdit && (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  onClose();
+                  onEdit(workOrder);
+                }}
+                className="w-full sm:w-auto shadow-sm text-xs"
+              >
+                Edit Work Order
+              </Button>
+            )}
+          </div>
+        </div>
       }
     >
-      <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-4 sm:space-y-5 no-print">
         {/* Title Banner */}
         <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200">
           <div className="flex items-center justify-between mb-2">
@@ -366,6 +395,63 @@ export default function WorkOrderDetailModal({ isOpen, onClose, workOrder, onEdi
             )}
           </div>
         )}
+      </div>
+
+      {/* Printable Official PWD Work Order Sanction Sheet for offline PDF generation */}
+      <div id="printable-document" className="hidden print:block bg-white p-6 font-sans text-slate-900 space-y-4 max-w-3xl mx-auto">
+        <div className="text-center border-b-2 border-slate-900 pb-3">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-700">
+            GOVERNMENT OF STATE / सरकारी लोक निर्माण विभाग
+          </h2>
+          <h3 className="text-sm font-extrabold uppercase mt-0.5">
+            OFFICE OF THE EXECUTIVE ENGINEER, DIVISION NO. 1
+          </h3>
+          <p className="text-xs font-semibold text-slate-800">
+            SANCTIONED WORK ORDER & STATUTORY SPECIFICATION ORDER
+          </p>
+          <div className="flex justify-center gap-4 text-[10px] text-slate-500 mt-1 font-mono">
+            <span>WO Ref: {workOrder.workOrderNumber}</span>
+            <span>•</span>
+            <span>Tender Ref: {workOrder.tenderNumber}</span>
+            <span>•</span>
+            <span>FY: {workOrder.financialYear}</span>
+          </div>
+        </div>
+
+        <div className="border p-3 rounded bg-slate-50 text-xs grid grid-cols-2 gap-2">
+          <div><span className="font-semibold text-slate-600 block">Project / Work Title:</span><span className="font-bold text-slate-900">{workOrder.title}</span></div>
+          <div><span className="font-semibold text-slate-600 block">Awarded Contractor:</span><span className="font-bold text-slate-900">{workOrder.contractorName}</span></div>
+          <div><span className="font-semibold text-slate-600 block">Work Order Date:</span><span className="font-bold text-slate-900">{formatDate(workOrder.workOrderDate)}</span></div>
+          <div><span className="font-semibold text-slate-600 block">Stipulated Completion:</span><span className="font-bold text-slate-900">{formatDate(workOrder.stipulatedDateOfCompletion)}</span></div>
+          <div><span className="font-semibold text-slate-600 block">TD (Preserved Field):</span><span className="font-mono text-slate-900">{workOrder.td || '-'}</span></div>
+          <div><span className="font-semibold text-slate-600 block">Estimate Number:</span><span className="font-mono text-slate-900">{workOrder.estimateNumber || '-'}</span></div>
+          <div><span className="font-semibold text-slate-600 block">Subdivision Association:</span><span className="text-slate-900">{workOrder.subdivisionName || 'Division General'}</span></div>
+          <div><span className="font-semibold text-slate-600 block">Execution Status:</span><span className="font-bold text-slate-900">{workOrder.status}</span></div>
+        </div>
+
+        <div className="border p-3 rounded bg-white text-xs">
+          <h4 className="font-bold uppercase text-slate-800 mb-2">Financial Valuation & Statutory Provisions</h4>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-2 bg-slate-50 rounded"><span className="text-slate-500 text-[10px] block">Sanctioned WO Value</span><span className="font-bold text-slate-900">{formatCurrency(workOrder.workOrderAmount)}</span></div>
+            <div className="p-2 bg-slate-50 rounded"><span className="text-slate-500 text-[10px] block">Earnest Money (EMD)</span><span className="font-bold text-slate-900">{formatCurrency(workOrder.emdAmount)}</span></div>
+            <div className="p-2 bg-slate-50 rounded"><span className="text-slate-500 text-[10px] block">Security Deposit (SD)</span><span className="font-bold text-slate-900">{formatCurrency(workOrder.sdAmount)}</span></div>
+          </div>
+        </div>
+
+        <div className="pt-6 border-t border-slate-300 grid grid-cols-2 gap-8 text-xs">
+          <div>
+            <p className="text-slate-500 font-medium">Reconciled by:</p>
+            <div className="mt-8 border-t border-slate-400 w-44 mb-1"></div>
+            <p className="font-bold text-slate-900">Divisional Accountant (DA)</p>
+            <p className="text-slate-500 text-[11px]">Accounts Branch, Division 1</p>
+          </div>
+          <div className="text-right flex flex-col items-end">
+            <p className="text-slate-500 font-medium">Sanctioned & Issued by:</p>
+            <div className="mt-8 border-t border-slate-400 w-44 mb-1 sm:ml-auto"></div>
+            <p className="font-bold text-slate-900">Executive Engineer</p>
+            <p className="text-slate-500 text-[11px]">Public Works Division No. 1</p>
+          </div>
+        </div>
       </div>
     </Modal>
   );

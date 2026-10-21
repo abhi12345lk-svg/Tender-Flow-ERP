@@ -12,6 +12,8 @@ import {
   Calendar,
   AlertCircle,
   FileCheck,
+  Printer,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -21,6 +23,8 @@ import Badge from '../../components/common/Badge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import BillingModal from './BillingModal';
 import BillingDetailModal from './BillingDetailModal';
+import PrintableReportModal from '../../components/common/PrintableReportModal';
+import { exportBillingExcel } from '../../services/export';
 
 export default function BillingPage() {
   const { billingList, addBilling, updateBilling, deleteBilling, workOrders, subdivisions, addToast } = useApp();
@@ -29,11 +33,29 @@ export default function BillingPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [subdivisionFilter, setSubdivisionFilter] = useState('ALL');
 
-  // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBilling, setEditingBilling] = useState(null);
   const [viewingBilling, setViewingBilling] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Client-side Excel (.xlsx) Register Export
+  const handleExportExcel = () => {
+    if (filteredBills.length === 0) {
+      addToast({
+        type: 'warning',
+        title: 'No Records',
+        message: 'No billing records available to export.',
+      });
+      return;
+    }
+    exportBillingExcel(filteredBills);
+    addToast({
+      type: 'success',
+      title: 'Excel Register Exported',
+      message: `Downloaded billing register (${filteredBills.length} records) as .xlsx.`,
+    });
+  };
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -233,9 +255,29 @@ export default function BillingPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
-          Create Bill Voucher
-        </Button>
+        <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            icon={FileSpreadsheet}
+            onClick={handleExportExcel}
+            className="w-full sm:w-auto text-xs"
+            title="Export filtered billing register to Excel (.xlsx)"
+          >
+            Export Excel (.xlsx)
+          </Button>
+          <Button
+            variant="outline"
+            icon={Printer}
+            onClick={() => setIsReportModalOpen(true)}
+            className="w-full sm:w-auto text-xs"
+            title="Print or save A4 PDF billing register report"
+          >
+            Print / PDF Register
+          </Button>
+          <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
+            Create Bill Voucher
+          </Button>
+        </div>
       </div>
 
       {/* Summary Valuation Cards */}
@@ -379,6 +421,17 @@ export default function BillingPage() {
         onClose={() => setViewingBilling(null)}
         billing={viewingBilling}
         onEdit={handleEdit}
+      />
+
+      {/* Printable Billing Register Report Modal */}
+      <PrintableReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Running Account Billing & Tax Scrutiny Register Report"
+        subtitle="Public Works Department | Division No. 1"
+        reportType="billing"
+        data={filteredBills}
+        onExportExcel={handleExportExcel}
       />
 
       {/* Delete Confirmation */}

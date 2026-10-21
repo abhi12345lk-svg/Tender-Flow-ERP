@@ -1,14 +1,38 @@
-  import React, { useState } from 'react';
+  import React, { useState, useEffect } from 'react';
   import { Outlet } from 'react-router-dom';
   import Sidebar from './Sidebar';
   import Topbar from './Topbar';
   import ToastContainer from '../common/Toast';
+  import PwaNotification from '../common/PwaNotification';
   import { useApp } from '../../context/AppContext';
 
   export default function Layout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const { toasts, removeToast } = useApp();
+
+    // Prevent body scrolling when mobile drawer is open
+    useEffect(() => {
+      if (mobileMenuOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'unset';
+      }
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
+    }, [mobileMenuOpen]);
+
+    // Close mobile drawer on desktop resize
+    useEffect(() => {
+      const handleResize = () => {
+        if (window.innerWidth >= 768) {
+          setMobileMenuOpen(false);
+        }
+      };
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleToggleSidebar = () => {
       // If screen is mobile/tablet, toggle drawer
@@ -23,6 +47,9 @@
       <div className="min-h-screen bg-slate-100/70 font-sans text-slate-800 flex">
         {/* Toast Notification Container */}
         <ToastContainer toasts={toasts} onDismiss={removeToast} />
+
+        {/* PWA Update & Offline Notification */}
+        <PwaNotification />
 
         {/* Desktop Sidebar */}
         <div className="hidden md:block">

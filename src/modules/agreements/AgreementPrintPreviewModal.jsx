@@ -1,14 +1,29 @@
-import React from 'react';
-import { Printer, Download, X, FileText, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Printer, Download, X, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { generateAgreementDocx } from '../../services/export';
 
 export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement, workOrder }) {
+  const [exportingWord, setExportingWord] = useState(false);
+
   if (!agreement) return null;
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadDoc = async () => {
+    try {
+      setExportingWord(true);
+      await generateAgreementDocx(agreement);
+    } catch (err) {
+      console.warn('Word export error:', err.message);
+      window.print();
+    } finally {
+      setExportingWord(false);
+    }
   };
 
   return (
@@ -30,19 +45,12 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
             </Button>
             <Button
               variant="outline"
-              icon={Download}
+              icon={exportingWord ? Loader2 : Download}
               className="w-full sm:w-auto"
-              onClick={() => {
-                const targetId = agreement._id || agreement.id;
-                const safeFilename = `${(agreement.agreementNumber || 'Agreement').replace(/[\/\\]/g, '_')}_Official_Contract.doc`;
-                if (targetId && (targetId.length === 24 || targetId.match(/^[0-9a-fA-F]{24}$/))) {
-                  window.open(`http://localhost:5000/api/v1/agreements/${targetId}/docx`, '_blank');
-                } else {
-                  window.print();
-                }
-              }}
+              onClick={handleDownloadDoc}
+              disabled={exportingWord}
             >
-              Download Word (.doc)
+              {exportingWord ? 'Generating .docx...' : 'Download Word (.docx)'}
             </Button>
             <Button variant="navy" icon={Printer} onClick={handlePrint} className="w-full sm:w-auto shadow-sm">
               Print / Save PDF

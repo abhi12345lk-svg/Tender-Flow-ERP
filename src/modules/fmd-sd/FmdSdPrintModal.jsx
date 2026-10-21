@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Printer, Languages, ShieldCheck, FileText, AlertCircle, Download } from 'lucide-react';
+import { Printer, Languages, ShieldCheck, FileText, AlertCircle, Download, Loader2 } from 'lucide-react';
+import { generateFmdCustodyDocx } from '../../services/export';
 
 export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
   const [language, setLanguage] = useState('en'); // 'en' or 'hi'
   const [editableNotes, setEditableNotes] = useState('');
+  const [exportingWord, setExportingWord] = useState(false);
 
   if (!fmdItem) return null;
 
@@ -15,6 +17,19 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
   };
 
   const isHindi = language === 'hi';
+
+  const handleDownloadWordDoc = async () => {
+    const lang = isHindi ? 'hi' : 'en';
+    try {
+      setExportingWord(true);
+      await generateFmdCustodyDocx(fmdItem, lang, editableNotes);
+    } catch (err) {
+      console.warn('Word certificate generation failed, fallback to print:', err.message);
+      window.print();
+    } finally {
+      setExportingWord(false);
+    }
+  };
 
   return (
     <Modal
@@ -61,20 +76,14 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
             </Button>
             <Button
               variant="outline"
-              icon={Download}
+              icon={exportingWord ? Loader2 : Download}
               className="w-full sm:w-auto"
-              onClick={() => {
-                const targetId = fmdItem._id || fmdItem.id;
-                const lang = isHindi ? 'hi' : 'en';
-                const filename = `${(fmdItem.tenderNumber || 'Tender').replace(/[\/\\]/g, '_')}_Custody_Certificate_${lang.toUpperCase()}.doc`;
-                if (targetId && (targetId.length === 24 || targetId.match(/^[0-9a-fA-F]{24}$/))) {
-                  window.open(`http://localhost:5000/api/v1/fmd-sd/${targetId}/docx?lang=${lang}`, '_blank');
-                } else {
-                  window.print();
-                }
-              }}
+              onClick={handleDownloadWordDoc}
+              disabled={exportingWord}
             >
-              {isHindi ? 'वर्ड (.doc) डाउनलोड' : 'Download Word (.doc)'}
+              {exportingWord
+                ? (isHindi ? 'वर्ड (.docx) तैयार...' : 'Generating .docx...')
+                : (isHindi ? 'वर्ड (.docx) डाउनलोड' : 'Download Word (.docx)')}
             </Button>
             <Button variant="navy" icon={Printer} onClick={handlePrint} className="w-full sm:w-auto shadow-sm">
               {isHindi ? 'मुद्रण / PDF सहेजें' : 'Print / Save PDF'}

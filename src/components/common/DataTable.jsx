@@ -20,8 +20,14 @@ export default function DataTable({
 }) {
   return (
     <div className={`bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden flex flex-col ${className}`}>
-      {/* Mobile scroll hint */}
-      <div className="overflow-x-auto min-h-[200px] scrollbar-thin scrollbar-thumb-slate-300">
+      {/* Mobile scroll hint banner for touch screens */}
+      {data.length > 0 && (
+        <div className="sm:hidden px-3 py-1.5 bg-slate-50 border-b border-slate-200/80 text-[11px] text-slate-500 flex items-center justify-between select-none">
+          <span>Swipe horizontally for details & actions</span>
+          <span className="font-semibold text-blue-600 font-mono text-[10px]">Scroll &rarr;</span>
+        </div>
+      )}
+      <div className="overflow-x-auto min-h-[200px] scrollbar-thin scrollbar-thumb-slate-300 -webkit-overflow-scrolling-touch">
         <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
           <thead className="bg-slate-50 text-slate-700 font-semibold uppercase tracking-wider select-none">
             <tr>

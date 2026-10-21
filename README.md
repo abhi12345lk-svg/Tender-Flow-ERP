@@ -6,19 +6,30 @@ A production-quality Government Works Management ERP built for Public Works Divi
 
 ## 🏗️ Architecture & Technology Stack
 
-### Frontend (Step 1):
-- **Framework**: React 18 with Vite
-- **Language**: JavaScript (ESModules) — *no TypeScript*
-- **Styling**: Tailwind CSS with custom government design tokens (Dark Navy `#070d1e`, Gov Blue `#1d4ed8`, Slate `#f8fafc`)
-- **Routing**: React Router v6
-- **Icons**: Lucide React
-- **API Client**: Centralized REST client with automatic authentication token and cookie propagation
+### Target Architecture (Offline-First Migration):
+- **Web App Hosting**: Vercel (Production Static SPA & PWA CDN)
+- **Backend API**: Node.js & Express on Render (where required for central cloud storage and authentication)
+- **Offline Storage**: IndexedDB via **Dexie.js** repositories for local business records
+- **Service Worker / PWA**: Vite PWA plugin with Workbox versioned asset precaching, offline navigation fallback, and safe update notifications
+- **Document Generation**: Offline browser printing (PDF) + Client & Server document generation (DOCX, PDF, XLSX)
+- **Modules**: Strictly the **six existing business modules** (Financial Year, Work Order, Agreement, Billing, Subdivision, FMD / SD)
 
-### Document Services & Storage (Step 3 Integration):
-- **Document Generation**: Server-side Microsoft Word (`.doc`) generation engine with standard government formatting, official tables, legal terms, and full Unicode Hindi character support (`Mangal` / `Arial Unicode MS`).
-- **File Upload & Custody Storage**: `multer` file handling service with strict MIME type checking (`.pdf`, `.doc`, `.docx`, images), 15MB size limits, sanitized timestamped filenames, streaming downloads, and physical file deletion upon record removal.
-- **Related Records Workflow**: Dynamic relationship resolution in Work Orders linking related Agreements, Billing vouchers, and FMD / SD records with billing progress realization tracking.
-- **Testing**: Automated end-to-end test suite expanded to 28 passing tests covering all models, workflows, document generation, and file uploads.
+```
+React 18 UI (Vite + Tailwind CSS + Lucide)
+   │
+   ├── Data Services / Repositories
+   │      └── IndexedDB via Dexie.js (Offline-First Local Business Records)
+   │
+   └── Optional Server Services (When Online)
+          └── Express REST API on Render ── MongoDB Atlas (Central Cloud Storage)
+```
+
+### Local-First Persistence & Storage (Step 2 Migration):
+- **Primary Database Engine**: IndexedDB via `Dexie.js` (`TenderFlowERP_DB`) stores records across all six modules with indexed query fields.
+- **Offline Durability**: All CRUD operations write immediately to local Dexie repositories. Changes survive full browser reloads, cache clears, and offline restarts.
+- **Offline Relations Resolution**: Work Orders dynamically resolve linked Agreements, Billing vouchers, and FMD / SD records locally in IndexedDB to compute financial realization progress bars without server calls.
+- **Offline Attachment Handling**: Uploaded documents are preserved offline via Base64 DataURLs in IndexedDB records for immediate downloading and viewing.
+- **Data Portability & Sovereign Backup**: Built-in JSON export and import allows government officers to download timestamped database backups (`.json`) and restore them safely into IndexedDB.
 
 ---
 
@@ -118,7 +129,7 @@ npm install
 cd server && npm install && cd ..
 ```
 
-### 4. Running the Application
+### 4. Development & Execution Commands
 
 #### Start Backend Server:
 ```bash
@@ -129,11 +140,32 @@ cd server && npm start
 - API Root: `http://localhost:5000/api/v1`
 - Health Check: `http://localhost:5000/api/health`
 
-#### Start Frontend Application:
+#### Start Frontend Application (PWA-enabled Development):
 ```bash
 npm run dev
 ```
 - Frontend UI: `http://localhost:3000/`
+- Service Worker registration & live PWA development reload active.
+
+#### Compile Production PWA Bundle:
+```bash
+npm run build
+```
+- Generates optimized client bundle in `dist/`.
+- Compiles `dist/manifest.webmanifest`.
+- Compiles Workbox precache service worker `dist/sw.js`.
+
+#### Preview Production PWA Build:
+```bash
+npm run preview
+```
+- Local preview on `http://localhost:4173/` simulating production offline capabilities.
+
+#### Pre-Flight DevOps & PWA Audit:
+```bash
+npm run audit
+```
+- Validates Vercel SPA config, Render blueprint, environment templates, `.gitignore` secret shielding, frontend PWA build output, and Dexie.js 6-module schema parity.
 
 #### Run Backend Test Suite:
 ```bash

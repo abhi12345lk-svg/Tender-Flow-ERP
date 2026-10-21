@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Calendar, CheckCircle2, Edit2, Trash2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Plus, Calendar, CheckCircle2, Edit2, Trash2, ShieldCheck, AlertCircle, Printer, FileSpreadsheet } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatDate } from '../../utils/formatters';
 import DataTable from '../../components/common/DataTable';
@@ -7,6 +7,8 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import FinancialYearModal from './FinancialYearModal';
+import PrintableReportModal from '../../components/common/PrintableReportModal';
+import { exportFinancialYearsExcel } from '../../services/export';
 
 export default function FinancialYearPage() {
   const {
@@ -17,12 +19,32 @@ export default function FinancialYearPage() {
     updateFinancialYear,
     deleteFinancialYear,
     workOrders,
+    addToast,
   } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFy, setEditingFy] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Client-side Excel (.xlsx) Register Export
+  const handleExportExcel = () => {
+    if (filteredYears.length === 0) {
+      addToast({
+        type: 'warning',
+        title: 'No Records',
+        message: 'No financial year records available to export.',
+      });
+      return;
+    }
+    exportFinancialYearsExcel(filteredYears, workOrders);
+    addToast({
+      type: 'success',
+      title: 'Excel Register Exported',
+      message: `Downloaded financial years register (${filteredYears.length} records) as .xlsx.`,
+    });
+  };
 
   // Filter FYs
   const filteredYears = financialYears.filter((fy) =>
@@ -159,9 +181,29 @@ export default function FinancialYearPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
-          Add Financial Year
-        </Button>
+        <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            icon={FileSpreadsheet}
+            onClick={handleExportExcel}
+            className="w-full sm:w-auto text-xs"
+            title="Export financial years register to Excel (.xlsx)"
+          >
+            Export Excel (.xlsx)
+          </Button>
+          <Button
+            variant="outline"
+            icon={Printer}
+            onClick={() => setIsReportModalOpen(true)}
+            className="w-full sm:w-auto text-xs"
+            title="Print or save A4 PDF financial years register report"
+          >
+            Print / PDF Register
+          </Button>
+          <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
+            Add Financial Year
+          </Button>
+        </div>
       </div>
 
       {/* Overview Cards */}
@@ -238,6 +280,18 @@ export default function FinancialYearPage() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
         editingFy={editingFy}
+      />
+
+      {/* Printable Financial Years Register Report Modal */}
+      <PrintableReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Financial Year Master Cycle & Fiscal Boundaries Report"
+        subtitle="Public Works Department | Division No. 1"
+        reportType="financial-year"
+        data={filteredYears}
+        activeFY={activeFY}
+        onExportExcel={handleExportExcel}
       />
 
       {/* Delete Confirmation */}

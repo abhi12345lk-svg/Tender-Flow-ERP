@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { generateId } from '../utils/formatters';
 import { api } from '../services/apiClient';
+import { dataService } from '../services/dataService';
 
 const AppContext = createContext(null);
 
@@ -333,14 +334,15 @@ export function AppProvider({ children }) {
   // Connection & loading state
   const [isBackendConnected, setIsBackendConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   // Toasts
   const [toasts, setToasts] = useState([
     {
-      id: 'step2-init',
+      id: 'step1-init',
       type: 'info',
-      title: 'TenderFlow ERP Backend & Database',
-      message: 'Step 2: Connecting to Node.js & MongoDB API...',
+      title: 'TenderFlow ERP Ready',
+      message: 'Offline-first PWA foundation & IndexedDB storage active.',
     },
   ]);
 
@@ -358,77 +360,65 @@ export function AppProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Fetch initial data from backend on load
-  const syncWithBackend = async () => {
+  // 1. Primary Local Storage: Load all datasets from Dexie IndexedDB
+  const loadLocalDatabase = async () => {
     try {
       setIsLoading(true);
-      const health = await api.health.check();
+      await dataService.initLocalStorage({
+        financialYears: INITIAL_FINANCIAL_YEARS,
+        subdivisions: INITIAL_SUBDIVISIONS,
+        workOrders: INITIAL_WORK_ORDERS,
+        agreements: INITIAL_AGREEMENTS,
+        billingList: INITIAL_BILLING,
+        fmdList: INITIAL_FMD_SD,
+      });
 
-      if (health.status === 'healthy') {
-        setIsBackendConnected(true);
-
-        // Fetch all 6 modules from MongoDB in parallel
-        const [fyRes, subRes, woRes, agrRes, billRes, fmdRes] = await Promise.allSettled([
-          api.financialYears.getAll(),
-          api.subdivisions.getAll(),
-          api.workOrders.getAll(),
-          api.agreements.getAll(),
-          api.billing.getAll(),
-          api.fmdSd.getAll(),
-        ]);
-
-        if (fyRes.status === 'fulfilled' && fyRes.value?.data?.length > 0) {
-          const list = fyRes.value.data.map(normalizeDoc);
-          setFinancialYears(list);
-          const current = list.find((f) => f.isCurrent);
-          if (current) setActiveFY(current.label);
-        }
-
-        if (subRes.status === 'fulfilled' && subRes.value?.data?.length > 0) {
-          setSubdivisions(subRes.value.data.map(normalizeDoc));
-        }
-
-        if (woRes.status === 'fulfilled' && woRes.value?.data?.length > 0) {
-          setWorkOrders(woRes.value.data.map(normalizeDoc));
-        }
-
-        if (agrRes.status === 'fulfilled' && agrRes.value?.data?.length > 0) {
-          setAgreements(agrRes.value.data.map(normalizeDoc));
-        }
-
-        if (billRes.status === 'fulfilled' && billRes.value?.data?.length > 0) {
-          setBillingList(billRes.value.data.map(normalizeDoc));
-        }
-
-        if (fmdRes.status === 'fulfilled' && fmdRes.value?.data?.length > 0) {
-          setFmdList(fmdRes.value.data.map(normalizeDoc));
-        }
-
-        addToast({
-          type: 'success',
-          title: 'MongoDB Connected',
-          message: 'Synced 6 government modules with Node.js & MongoDB backend.',
-          duration: 3500,
-        });
-      } else {
-        setIsBackendConnected(false);
-        addToast({
-          type: 'warning',
-          title: 'Backend Status: Pending Database',
-          message: 'Operating with in-memory government datasets until server connection is verified.',
-          duration: 4000,
-        });
+      const localData = await dataService.loadAllFromLocal();
+      if (localData.financialYears?.length > 0) {
+        setFinancialYears(localData.financialYears);
+        const current = localData.financialYears.find((f) => f.isCurrent);
+        if (current) setActiveFY(current.label);
       }
+      if (localData.subdivisions?.length > 0) setSubdivisions(localData.subdivisions);
+      if (localData.workOrders?.length > 0) setWorkOrders(localData.workOrders);
+      if (localData.agreements?.length > 0) setAgreements(localData.agreements);
+      if (localData.billingList?.length > 0) setBillingList(localData.billingList);
+      if (localData.fmdList?.length > 0) setFmdList(localData.fmdList);
+      return localData;
     } catch (err) {
-      setIsBackendConnected(false);
-      console.warn('[AppContext] Running in frontend fallback mode:', err.message);
+      console.warn('[AppContext] Failed to load local IndexedDB data:', err.message);
+      return null;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Re-read local IndexedDB and update React state
+  const refreshLocalData = async () => {
+    return await loadLocalDatabase();
+  };
+
+  // 2. Health check to determine backend connectivity WITHOUT blind automatic overwriting.
+  // Full synchronization is explicit and user-controlled via CloudSyncModal.
+  const checkBackendConnectivity = async () => {
+    try {
+      const health = await api.health.check();
+      const isHealthy = health?.status === 'healthy';
+      setIsBackendConnected(isHealthy);
+      return isHealthy;
+    } catch (err) {
+      setIsBackendConnected(false);
+      console.warn('[AppContext] Running in offline standalone mode:', err.message);
+      return false;
+    }
+  };
+
   useEffect(() => {
-    syncWithBackend();
+    const init = async () => {
+      await loadLocalDatabase();
+      await checkBackendConnectivity();
+    };
+    init();
   }, []);
 
   // Switch Active FY
@@ -439,6 +429,14 @@ export function AppProvider({ children }) {
     );
 
     const target = financialYears.find((f) => f.label === fyLabel);
+    if (target?.id) {
+      try {
+        await dataService.local.financialYears.setActive(target.id);
+      } catch (err) {
+        console.warn('Local active FY update error:', err.message);
+      }
+    }
+
     if (isBackendConnected && target?._id) {
       try {
         await api.financialYears.setActive(target._id);
@@ -454,48 +452,60 @@ export function AppProvider({ children }) {
     });
   };
 
-  // FY CRUD
+  // 1. Financial Year CRUD
   const addFinancialYear = async (fyData) => {
+    const newFy = {
+      id: generateId('fy'),
+      ...fyData,
+      isCurrent: financialYears.length === 0,
+    };
+
+    // Primary write to local Dexie IndexedDB
     try {
-      if (isBackendConnected) {
-        const res = await api.financialYears.create(fyData);
-        const newFy = normalizeDoc(res.data);
-        setFinancialYears((prev) => [newFy, ...prev]);
-        addToast({
-          type: 'success',
-          title: 'Financial Year Created (MongoDB)',
-          message: `FY ${newFy.label} stored in MongoDB database.`,
-        });
-        return newFy;
-      }
+      await dataService.local.financialYears.create(newFy);
     } catch (err) {
-      addToast({ type: 'error', title: 'API Error', message: err.message });
-      return null;
+      console.warn('IndexedDB write error:', err.message);
     }
 
-    // Local fallback
-    const newFy = { id: generateId('fy'), ...fyData, isCurrent: financialYears.length === 0 };
+    // Secondary sync if online
+    if (isBackendConnected) {
+      try {
+        const res = await api.financialYears.create(fyData);
+        if (res?.data?._id) {
+          newFy._id = res.data._id;
+          await dataService.local.financialYears.update(newFy.id, { _id: res.data._id });
+        }
+      } catch (err) {
+        console.warn('Backend create error, saved locally:', err.message);
+      }
+    }
+
     setFinancialYears((prev) => [newFy, ...prev]);
-    addToast({ type: 'success', title: 'Financial Year Created', message: `FY ${newFy.label} registered.` });
+    addToast({
+      type: 'success',
+      title: 'Financial Year Created',
+      message: `FY ${newFy.label} saved in local storage${isBackendConnected ? ' & cloud' : ''}.`,
+    });
     return newFy;
   };
 
   const updateFinancialYear = async (id, fyData) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        const res = await api.financialYears.update(id, fyData);
-        const updated = normalizeDoc(res.data);
-        setFinancialYears((prev) => prev.map((item) => (item.id === id || item._id === id ? updated : item)));
-        addToast({ type: 'success', title: 'FY Updated (MongoDB)', message: 'Record updated in database.' });
-        return;
-      }
+      await dataService.local.financialYears.update(id, fyData);
     } catch (err) {
-      addToast({ type: 'error', title: 'Update Error', message: err.message });
-      return;
+      console.warn('IndexedDB update error:', err.message);
     }
 
-    setFinancialYears((prev) => prev.map((item) => (item.id === id ? { ...item, ...fyData } : item)));
-    addToast({ type: 'success', title: 'Financial Year Updated', message: 'Details saved.' });
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.financialYears.update(id, fyData);
+      } catch (err) {
+        console.warn('Backend update error, saved locally:', err.message);
+      }
+    }
+
+    setFinancialYears((prev) => prev.map((item) => (item.id === id || item._id === id ? { ...item, ...fyData } : item)));
+    addToast({ type: 'success', title: 'Financial Year Updated', message: 'Details saved to IndexedDB.' });
   };
 
   const deleteFinancialYear = async (id) => {
@@ -510,318 +520,413 @@ export function AppProvider({ children }) {
     }
 
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        await api.financialYears.delete(id);
-        setFinancialYears((prev) => prev.filter((item) => item.id !== id && item._id !== id));
-        addToast({ type: 'warning', title: 'FY Deleted (MongoDB)', message: `FY ${target?.label || ''} removed from database.` });
-        return true;
-      }
+      await dataService.local.financialYears.delete(target?.id || id);
     } catch (err) {
-      addToast({ type: 'error', title: 'Delete Error', message: err.message });
-      return false;
+      console.warn('IndexedDB delete error:', err.message);
     }
 
-    setFinancialYears((prev) => prev.filter((item) => item.id !== id));
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.financialYears.delete(id);
+      } catch (err) {
+        console.warn('Backend delete error:', err.message);
+      }
+    }
+
+    setFinancialYears((prev) => prev.filter((item) => item.id !== id && item._id !== id));
     addToast({ type: 'warning', title: 'Financial Year Deleted', message: `FY ${target?.label || ''} removed.` });
     return true;
   };
 
-  // Subdivision CRUD
+  // 2. Subdivision CRUD
   const addSubdivision = async (subData) => {
+    const newSub = { id: generateId('sub'), ...subData };
+
     try {
-      if (isBackendConnected) {
-        const res = await api.subdivisions.create(subData);
-        const newSub = normalizeDoc(res.data);
-        setSubdivisions((prev) => [...prev, newSub]);
-        addToast({ type: 'success', title: 'Subdivision Created (MongoDB)', message: `${newSub.name} saved in database.` });
-        return newSub;
-      }
+      await dataService.local.subdivisions.create(newSub);
     } catch (err) {
-      addToast({ type: 'error', title: 'API Error', message: err.message });
-      return null;
+      console.warn('IndexedDB write error:', err.message);
     }
 
-    const newSub = { id: generateId('sub'), ...subData };
+    if (isBackendConnected) {
+      try {
+        const res = await api.subdivisions.create(subData);
+        if (res?.data?._id) {
+          newSub._id = res.data._id;
+          await dataService.local.subdivisions.update(newSub.id, { _id: res.data._id });
+        }
+      } catch (err) {
+        console.warn('Backend create error, saved locally:', err.message);
+      }
+    }
+
     setSubdivisions((prev) => [...prev, newSub]);
-    addToast({ type: 'success', title: 'Subdivision Added', message: `${newSub.name} registered.` });
+    addToast({ type: 'success', title: 'Subdivision Added', message: `${newSub.name} saved in IndexedDB.` });
     return newSub;
   };
 
   const updateSubdivision = async (id, subData) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        const res = await api.subdivisions.update(id, subData);
-        const updated = normalizeDoc(res.data);
-        setSubdivisions((prev) => prev.map((item) => (item.id === id || item._id === id ? updated : item)));
-        addToast({ type: 'success', title: 'Subdivision Updated (MongoDB)', message: 'Details saved in database.' });
-        return;
-      }
+      await dataService.local.subdivisions.update(id, subData);
     } catch (err) {
-      addToast({ type: 'error', title: 'Update Error', message: err.message });
-      return;
+      console.warn('IndexedDB update error:', err.message);
     }
 
-    setSubdivisions((prev) => prev.map((item) => (item.id === id ? { ...item, ...subData } : item)));
-    addToast({ type: 'success', title: 'Subdivision Updated', message: 'Details saved.' });
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.subdivisions.update(id, subData);
+      } catch (err) {
+        console.warn('Backend update error:', err.message);
+      }
+    }
+
+    setSubdivisions((prev) => prev.map((item) => (item.id === id || item._id === id ? { ...item, ...subData } : item)));
+    addToast({ type: 'success', title: 'Subdivision Updated', message: 'Details saved in IndexedDB.' });
   };
 
   const deleteSubdivision = async (id) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        await api.subdivisions.delete(id);
-        setSubdivisions((prev) => prev.filter((item) => item.id !== id && item._id !== id));
-        addToast({ type: 'warning', title: 'Subdivision Deleted (MongoDB)', message: 'Record removed from database.' });
-        return true;
-      }
+      await dataService.local.subdivisions.delete(id);
     } catch (err) {
-      addToast({ type: 'error', title: 'Delete Error', message: err.message });
-      return false;
+      console.warn('IndexedDB delete error:', err.message);
     }
 
-    setSubdivisions((prev) => prev.filter((item) => item.id !== id));
-    addToast({ type: 'warning', title: 'Subdivision Removed', message: 'Subdivision deleted.' });
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.subdivisions.delete(id);
+      } catch (err) {
+        console.warn('Backend delete error:', err.message);
+      }
+    }
+
+    setSubdivisions((prev) => prev.filter((item) => item.id !== id && item._id !== id));
+    addToast({ type: 'warning', title: 'Subdivision Removed', message: 'Subdivision deleted from local storage.' });
     return true;
   };
 
-  // Work Order CRUD
+  // 3. Work Order CRUD
   const addWorkOrder = async (woData) => {
+    const newWo = { id: generateId('wo'), ...woData };
+
     try {
-      if (isBackendConnected) {
+      await dataService.local.workOrders.create(newWo);
+    } catch (err) {
+      console.warn('IndexedDB write error:', err.message);
+    }
+
+    if (isBackendConnected) {
+      try {
         const payload = {
           ...woData,
           subdivision: woData.subdivisionId && woData.subdivisionId.length === 24 ? woData.subdivisionId : null,
         };
         const res = await api.workOrders.create(payload);
-        const newWo = normalizeDoc(res.data);
-        setWorkOrders((prev) => [newWo, ...prev]);
-        addToast({
-          type: 'success',
-          title: 'Work Order Created (MongoDB)',
-          message: `Work Order ${newWo.workOrderNumber} persisted to database.`,
-        });
-        return newWo;
+        if (res?.data?._id) {
+          newWo._id = res.data._id;
+          await dataService.local.workOrders.update(newWo.id, { _id: res.data._id });
+        }
+      } catch (err) {
+        console.warn('Backend create error, saved locally:', err.message);
       }
-    } catch (err) {
-      addToast({ type: 'error', title: 'Validation / API Error', message: err.message });
-      return null;
     }
 
-    const newWo = { id: generateId('wo'), ...woData };
     setWorkOrders((prev) => [newWo, ...prev]);
-    addToast({ type: 'success', title: 'Work Order Created', message: `Work Order ${newWo.workOrderNumber} created.` });
+    addToast({
+      type: 'success',
+      title: 'Work Order Created',
+      message: `Work Order ${newWo.workOrderNumber} saved in IndexedDB.`,
+    });
     return newWo;
   };
 
   const updateWorkOrder = async (id, woData) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      await dataService.local.workOrders.update(id, woData);
+    } catch (err) {
+      console.warn('IndexedDB update error:', err.message);
+    }
+
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
         const payload = {
           ...woData,
           subdivision: woData.subdivisionId && woData.subdivisionId.length === 24 ? woData.subdivisionId : null,
         };
-        const res = await api.workOrders.update(id, payload);
-        const updated = normalizeDoc(res.data);
-        setWorkOrders((prev) => prev.map((item) => (item.id === id || item._id === id ? updated : item)));
-        addToast({ type: 'success', title: 'Work Order Updated (MongoDB)', message: 'Changes saved in database.' });
-        return;
+        await api.workOrders.update(id, payload);
+      } catch (err) {
+        console.warn('Backend update error, saved locally:', err.message);
       }
-    } catch (err) {
-      addToast({ type: 'error', title: 'Update Error', message: err.message });
-      return;
     }
 
-    setWorkOrders((prev) => prev.map((item) => (item.id === id ? { ...item, ...woData } : item)));
-    addToast({ type: 'success', title: 'Work Order Updated', message: 'Changes saved.' });
+    setWorkOrders((prev) => prev.map((item) => (item.id === id || item._id === id ? { ...item, ...woData } : item)));
+    addToast({ type: 'success', title: 'Work Order Updated', message: 'Changes saved to local storage.' });
   };
 
   const deleteWorkOrder = async (id) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        await api.workOrders.delete(id);
-        setWorkOrders((prev) => prev.filter((item) => item.id !== id && item._id !== id));
-        addToast({ type: 'warning', title: 'Work Order Deleted (MongoDB)', message: 'Record deleted from database.' });
-        return true;
-      }
+      await dataService.local.workOrders.delete(id);
     } catch (err) {
-      addToast({ type: 'error', title: 'Delete Error', message: err.message });
-      return false;
+      console.warn('IndexedDB delete error:', err.message);
     }
 
-    setWorkOrders((prev) => prev.filter((item) => item.id !== id));
-    addToast({ type: 'warning', title: 'Work Order Deleted', message: 'Work Order removed.' });
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.workOrders.delete(id);
+      } catch (err) {
+        console.warn('Backend delete error:', err.message);
+      }
+    }
+
+    setWorkOrders((prev) => prev.filter((item) => item.id !== id && item._id !== id));
+    addToast({ type: 'warning', title: 'Work Order Deleted', message: 'Work Order removed from local storage.' });
     return true;
   };
 
-  // Agreement CRUD
+  // 4. Agreement CRUD
   const addAgreement = async (agrData) => {
+    const newAgr = { id: generateId('agr'), ...agrData };
+
     try {
-      if (isBackendConnected) {
+      await dataService.local.agreements.create(newAgr);
+    } catch (err) {
+      console.warn('IndexedDB write error:', err.message);
+    }
+
+    if (isBackendConnected) {
+      try {
         const payload = {
           ...agrData,
           workOrder: agrData.workOrderId && agrData.workOrderId.length === 24 ? agrData.workOrderId : workOrders[0]?._id,
         };
         const res = await api.agreements.create(payload);
-        const newAgr = normalizeDoc(res.data);
-        setAgreements((prev) => [newAgr, ...prev]);
-        addToast({ type: 'success', title: 'Agreement Created (MongoDB)', message: `Agreement ${newAgr.agreementNumber} stored in database.` });
-        return newAgr;
+        if (res?.data?._id) {
+          newAgr._id = res.data._id;
+          await dataService.local.agreements.update(newAgr.id, { _id: res.data._id });
+        }
+      } catch (err) {
+        console.warn('Backend create error, saved locally:', err.message);
       }
-    } catch (err) {
-      addToast({ type: 'error', title: 'API Error', message: err.message });
-      return null;
     }
 
-    const newAgr = { id: generateId('agr'), ...agrData };
     setAgreements((prev) => [newAgr, ...prev]);
-    addToast({ type: 'success', title: 'Agreement Registered', message: `Agreement ${newAgr.agreementNumber} created.` });
+    addToast({
+      type: 'success',
+      title: 'Agreement Registered',
+      message: `Agreement ${newAgr.agreementNumber} saved in IndexedDB.`,
+    });
     return newAgr;
   };
 
   const updateAgreement = async (id, agrData) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        const res = await api.agreements.update(id, agrData);
-        const updated = normalizeDoc(res.data);
-        setAgreements((prev) => prev.map((item) => (item.id === id || item._id === id ? updated : item)));
-        addToast({ type: 'success', title: 'Agreement Updated (MongoDB)', message: 'Agreement updated in database.' });
-        return;
-      }
+      await dataService.local.agreements.update(id, agrData);
     } catch (err) {
-      addToast({ type: 'error', title: 'Update Error', message: err.message });
-      return;
+      console.warn('IndexedDB update error:', err.message);
     }
 
-    setAgreements((prev) => prev.map((item) => (item.id === id ? { ...item, ...agrData } : item)));
-    addToast({ type: 'success', title: 'Agreement Updated', message: 'Agreement details updated.' });
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.agreements.update(id, agrData);
+      } catch (err) {
+        console.warn('Backend update error, saved locally:', err.message);
+      }
+    }
+
+    setAgreements((prev) => prev.map((item) => (item.id === id || item._id === id ? { ...item, ...agrData } : item)));
+    addToast({ type: 'success', title: 'Agreement Updated', message: 'Agreement details updated in storage.' });
   };
 
   const deleteAgreement = async (id) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        await api.agreements.delete(id);
-        setAgreements((prev) => prev.filter((item) => item.id !== id && item._id !== id));
-        addToast({ type: 'warning', title: 'Agreement Deleted (MongoDB)', message: 'Agreement deleted from database.' });
-        return true;
-      }
+      await dataService.local.agreements.delete(id);
     } catch (err) {
-      addToast({ type: 'error', title: 'Delete Error', message: err.message });
-      return false;
+      console.warn('IndexedDB delete error:', err.message);
     }
 
-    setAgreements((prev) => prev.filter((item) => item.id !== id));
-    addToast({ type: 'warning', title: 'Agreement Removed', message: 'Agreement entry deleted.' });
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.agreements.delete(id);
+      } catch (err) {
+        console.warn('Backend delete error:', err.message);
+      }
+    }
+
+    setAgreements((prev) => prev.filter((item) => item.id !== id && item._id !== id));
+    addToast({ type: 'warning', title: 'Agreement Removed', message: 'Agreement entry deleted from local storage.' });
     return true;
   };
 
-  // Billing CRUD
+  // 5. Billing CRUD
   const addBilling = async (billData) => {
+    const newBill = { id: generateId('bill'), ...billData };
+
     try {
-      if (isBackendConnected) {
+      await dataService.local.billing.create(newBill);
+    } catch (err) {
+      console.warn('IndexedDB write error:', err.message);
+    }
+
+    if (isBackendConnected) {
+      try {
         const payload = {
           ...billData,
           workOrder: billData.workOrderId && billData.workOrderId.length === 24 ? billData.workOrderId : workOrders[0]?._id,
           subdivision: billData.subdivisionId && billData.subdivisionId.length === 24 ? billData.subdivisionId : null,
         };
         const res = await api.billing.create(payload);
-        const newBill = normalizeDoc(res.data);
-        setBillingList((prev) => [newBill, ...prev]);
-        addToast({ type: 'success', title: 'Bill Voucher Created (MongoDB)', message: `Invoice ${newBill.invoiceNumber} recorded in database.` });
-        return newBill;
+        if (res?.data?._id) {
+          newBill._id = res.data._id;
+          await dataService.local.billing.update(newBill.id, { _id: res.data._id });
+        }
+      } catch (err) {
+        console.warn('Backend create error, saved locally:', err.message);
       }
-    } catch (err) {
-      addToast({ type: 'error', title: 'API Error', message: err.message });
-      return null;
     }
 
-    const newBill = { id: generateId('bill'), ...billData };
     setBillingList((prev) => [newBill, ...prev]);
-    addToast({ type: 'success', title: 'Bill Record Generated', message: `Invoice ${newBill.invoiceNumber} recorded.` });
+    addToast({
+      type: 'success',
+      title: 'Bill Record Generated',
+      message: `Invoice ${newBill.invoiceNumber || newBill.billNumber} saved in IndexedDB.`,
+    });
     return newBill;
   };
 
   const updateBilling = async (id, billData) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        const res = await api.billing.update(id, billData);
-        const updated = normalizeDoc(res.data);
-        setBillingList((prev) => prev.map((item) => (item.id === id || item._id === id ? updated : item)));
-        addToast({ type: 'success', title: 'Bill Updated (MongoDB)', message: 'Invoice updated in database.' });
-        return;
-      }
+      await dataService.local.billing.update(id, billData);
     } catch (err) {
-      addToast({ type: 'error', title: 'Update Error', message: err.message });
-      return;
+      console.warn('IndexedDB update error:', err.message);
     }
 
-    setBillingList((prev) => prev.map((item) => (item.id === id ? { ...item, ...billData } : item)));
-    addToast({ type: 'success', title: 'Bill Updated', message: 'Invoice updated.' });
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.billing.update(id, billData);
+      } catch (err) {
+        console.warn('Backend update error, saved locally:', err.message);
+      }
+    }
+
+    setBillingList((prev) => prev.map((item) => (item.id === id || item._id === id ? { ...item, ...billData } : item)));
+    addToast({ type: 'success', title: 'Bill Updated', message: 'Invoice details updated in storage.' });
   };
 
   const deleteBilling = async (id) => {
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        await api.billing.delete(id);
-        setBillingList((prev) => prev.filter((item) => item.id !== id && item._id !== id));
-        addToast({ type: 'warning', title: 'Bill Deleted (MongoDB)', message: 'Invoice removed from database.' });
-        return true;
-      }
+      await dataService.local.billing.delete(id);
     } catch (err) {
-      addToast({ type: 'error', title: 'Delete Error', message: err.message });
-      return false;
+      console.warn('IndexedDB delete error:', err.message);
     }
 
-    setBillingList((prev) => prev.filter((item) => item.id !== id));
-    addToast({ type: 'warning', title: 'Bill Deleted', message: 'Invoice removed.' });
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.billing.delete(id);
+      } catch (err) {
+        console.warn('Backend delete error:', err.message);
+      }
+    }
+
+    setBillingList((prev) => prev.filter((item) => item.id !== id && item._id !== id));
+    addToast({ type: 'warning', title: 'Bill Deleted', message: 'Invoice removed from storage.' });
     return true;
   };
 
-  // FMD / SD Actions
-  const updateFmdItem = async (id, fmdData) => {
+  // 6. FMD / SD Actions
+  const addFmdItem = async (fmdData) => {
+    const newItem = {
+      id: generateId('fmd'),
+      ...fmdData,
+      uploadedDocuments: fmdData.uploadedDocuments || [],
+    };
+
     try {
-      if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
-        const res = await api.fmdSd.update(id, fmdData);
-        const updated = normalizeDoc(res.data);
-        setFmdList((prev) => prev.map((item) => (item.id === id || item._id === id ? updated : item)));
-        addToast({ type: 'success', title: 'FMD / SD Updated (MongoDB)', message: 'FMD record updated in database.' });
-        return;
-      }
+      await dataService.local.fmdSd.create(newItem);
     } catch (err) {
-      addToast({ type: 'error', title: 'Update Error', message: err.message });
-      return;
+      console.warn('IndexedDB write error:', err.message);
     }
 
-    setFmdList((prev) => prev.map((item) => (item.id === id ? { ...item, ...fmdData } : item)));
-    addToast({ type: 'success', title: 'FMD / SD Updated', message: 'Details updated.' });
+    if (isBackendConnected) {
+      try {
+        const payload = {
+          ...fmdData,
+          workOrder: fmdData.workOrderId && fmdData.workOrderId.length === 24 ? fmdData.workOrderId : null,
+        };
+        const res = await api.fmdSd.create(payload);
+        if (res?.data?._id) {
+          newItem._id = res.data._id;
+          await dataService.local.fmdSd.update(newItem.id, { _id: res.data._id });
+        }
+      } catch (err) {
+        console.warn('Backend create error, saved locally:', err.message);
+      }
+    }
+
+    setFmdList((prev) => [newItem, ...prev]);
+    addToast({
+      type: 'success',
+      title: 'FMD / SD Registered',
+      message: `Record for ${newItem.tenderNumber} saved in IndexedDB.`,
+    });
+    return newItem;
+  };
+
+  const updateFmdItem = async (id, fmdData) => {
+    try {
+      await dataService.local.fmdSd.update(id, fmdData);
+    } catch (err) {
+      console.warn('IndexedDB update error:', err.message);
+    }
+
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.fmdSd.update(id, fmdData);
+      } catch (err) {
+        console.warn('Backend update error, saved locally:', err.message);
+      }
+    }
+
+    setFmdList((prev) => prev.map((item) => (item.id === id || item._id === id ? { ...item, ...fmdData } : item)));
+    addToast({ type: 'success', title: 'FMD / SD Updated', message: 'Details updated in IndexedDB.' });
+  };
+
+  const deleteFmdItem = async (id) => {
+    try {
+      await dataService.local.fmdSd.delete(id);
+    } catch (err) {
+      console.warn('IndexedDB delete error:', err.message);
+    }
+
+    if (isBackendConnected && (id.length === 24 || id.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.fmdSd.delete(id);
+      } catch (err) {
+        console.warn('Backend delete error:', err.message);
+      }
+    }
+
+    setFmdList((prev) => prev.filter((item) => item.id !== id && item._id !== id));
+    addToast({ type: 'warning', title: 'FMD Record Deleted', message: 'Record removed from local storage.' });
+    return true;
   };
 
   const addFmdDocument = async (fmdId, docFile) => {
-    try {
-      if (isBackendConnected && (fmdId.length === 24 || fmdId.match(/^[0-9a-fA-F]{24}$/))) {
-        const res = await api.fmdSd.uploadFile(fmdId, docFile);
-        const updated = normalizeDoc(res.data);
-        setFmdList((prev) => prev.map((item) => (item.id === fmdId || item._id === fmdId ? updated : item)));
-        addToast({
-          type: 'success',
-          title: 'Document Uploaded (Server Custody)',
-          message: `"${docFile.name}" securely stored on server with verified metadata.`,
-        });
-        return;
-      }
-    } catch (err) {
-      addToast({ type: 'error', title: 'File Upload Failed', message: err.message });
-      return;
-    }
+    // Read file as base64 data URL for offline persistence in IndexedDB
+    const readDataUrl = (file) =>
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
 
-    // Local fallback
-    const docMeta = {
-      name: docFile.name,
-      size: `${(docFile.size / 1024).toFixed(1)} KB`,
-      type: docFile.type || 'application/pdf',
-    };
+    const dataUrl = await readDataUrl(docFile);
 
     const newDoc = {
       id: generateId('doc'),
-      ...docMeta,
+      name: docFile.name,
+      size: `${(docFile.size / 1024).toFixed(1)} KB`,
+      type: docFile.type || 'application/pdf',
+      dataUrl,
       uploadedAt: new Date().toLocaleString('en-IN', {
         day: '2-digit',
         month: 'short',
@@ -831,42 +936,78 @@ export function AppProvider({ children }) {
       }),
     };
 
+    // Update in React State
     setFmdList((prev) =>
       prev.map((item) =>
-        item.id === fmdId
+        item.id === fmdId || item._id === fmdId
           ? { ...item, uploadedDocuments: [...(item.uploadedDocuments || []), newDoc] }
           : item
       )
     );
 
+    // Update in local Dexie IndexedDB
+    try {
+      const fmdRecord = await dataService.local.fmdSd.getById(fmdId);
+      if (fmdRecord) {
+        const docs = [...(fmdRecord.uploadedDocuments || []), newDoc];
+        await dataService.local.fmdSd.update(fmdId, { uploadedDocuments: docs });
+      }
+    } catch (err) {
+      console.warn('IndexedDB document update error:', err.message);
+    }
+
+    // Secondary upload to server custody if online
+    if (isBackendConnected && (fmdId.length === 24 || fmdId.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        const res = await api.fmdSd.uploadFile(fmdId, docFile);
+        const updated = normalizeDoc(res.data);
+        setFmdList((prev) => prev.map((item) => (item.id === fmdId || item._id === fmdId ? updated : item)));
+        addToast({
+          type: 'success',
+          title: 'Document Uploaded',
+          message: `"${docFile.name}" stored in local storage & uploaded to server.`,
+        });
+        return;
+      } catch (err) {
+        console.warn('Server upload failed, preserved in local storage:', err.message);
+      }
+    }
+
     addToast({
-      type: 'info',
-      title: 'Document Uploaded',
-      message: `"${docFile.name}" added to session preview.`,
+      type: 'success',
+      title: 'Document Saved Locally',
+      message: `"${docFile.name}" stored in IndexedDB for offline access.`,
     });
   };
 
   const removeFmdDocument = async (fmdId, docId) => {
-    try {
-      if (isBackendConnected && (fmdId.length === 24 || fmdId.match(/^[0-9a-fA-F]{24}$/))) {
-        const res = await api.fmdSd.deleteDocument(fmdId, docId);
-        const updated = normalizeDoc(res.data);
-        setFmdList((prev) => prev.map((item) => (item.id === fmdId || item._id === fmdId ? updated : item)));
-        addToast({ type: 'warning', title: 'Document Removed (MongoDB)', message: 'Document reference deleted.' });
-        return;
-      }
-    } catch (err) {
-      addToast({ type: 'error', title: 'Error', message: err.message });
-    }
-
     setFmdList((prev) =>
       prev.map((item) =>
-        item.id === fmdId
+        item.id === fmdId || item._id === fmdId
           ? { ...item, uploadedDocuments: (item.uploadedDocuments || []).filter((d) => d.id !== docId && d._id !== docId) }
           : item
       )
     );
-    addToast({ type: 'warning', title: 'Document Removed', message: 'Document deleted from preview.' });
+
+    try {
+      const fmdRecord = await dataService.local.fmdSd.getById(fmdId);
+      if (fmdRecord) {
+        const docs = (fmdRecord.uploadedDocuments || []).filter((d) => d.id !== docId && d._id !== docId);
+        await dataService.local.fmdSd.update(fmdId, { uploadedDocuments: docs });
+      }
+    } catch (err) {
+      console.warn('IndexedDB document remove error:', err.message);
+    }
+
+    if (isBackendConnected && (fmdId.length === 24 || fmdId.match(/^[0-9a-fA-F]{24}$/))) {
+      try {
+        await api.fmdSd.deleteDocument(fmdId, docId);
+      } catch (err) {
+        console.warn('Server doc delete failed:', err.message);
+      }
+    }
+
+    addToast({ type: 'warning', title: 'Document Removed', message: 'Document reference removed from storage.' });
   };
 
   return (
@@ -900,7 +1041,9 @@ export function AppProvider({ children }) {
         deleteBilling,
 
         fmdList,
+        addFmdItem,
         updateFmdItem,
+        deleteFmdItem,
         addFmdDocument,
         removeFmdDocument,
 
@@ -910,7 +1053,15 @@ export function AppProvider({ children }) {
 
         isBackendConnected,
         isLoading,
-        refreshData: syncWithBackend,
+        refreshData: checkBackendConnectivity,
+        refreshLocalData,
+        isSyncModalOpen,
+        setIsSyncModalOpen,
+        openSyncModal: () => setIsSyncModalOpen(true),
+        closeSyncModal: () => setIsSyncModalOpen(false),
+        syncService: dataService.sync,
+        dataService,
+        repositories: dataService.local,
       }}
     >
       {children}

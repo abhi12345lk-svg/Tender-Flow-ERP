@@ -14,28 +14,32 @@ import {
   AlertCircle,
   HardDrive,
   FileCode,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { api } from '../../services/apiClient';
 import DataTable from '../../components/common/DataTable';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import FmdSdModal from './FmdSdModal';
 import FmdSdPrintModal from './FmdSdPrintModal';
+import PrintableReportModal from '../../components/common/PrintableReportModal';
+import { generateFmdCustodyDocx, exportFmdSdExcel } from '../../services/export';
 
 export default function FmdSdPage() {
-  const { fmdList, updateFmdItem, addFmdDocument, removeFmdDocument, addToast, isBackendConnected } = useApp();
+  const { fmdList, addFmdItem, updateFmdItem, deleteFmdItem, addFmdDocument, removeFmdDocument, addToast, isBackendConnected } = useApp();
 
   const [selectedFmdId, setSelectedFmdId] = useState(fmdList[0]?.id || null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'dossier' for phone screens
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [activePrintItem, setActivePrintItem] = useState(null);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   // File Upload State
   const fileInputRef = useRef(null);
@@ -64,22 +68,26 @@ export default function FmdSdPage() {
     }
   };
 
-  const handleSave = (data) => {
+  const handleSave = async (data) => {
     if (editingItem) {
-      updateFmdItem(editingItem._id || editingItem.id, data);
+      await updateFmdItem(editingItem._id || editingItem.id, data);
     } else {
-      // Add new FMD item
-      const newItem = {
-        id: `fmd-${Date.now()}`,
-        ...data,
-      };
-      fmdList.push(newItem);
-      setSelectedFmdId(newItem.id);
-      addToast({
-        type: 'success',
-        title: 'FMD / SD Registered',
-        message: `Tender ${newItem.tenderNumber} security record created.`,
-      });
+      const res = await addFmdItem(data);
+      if (res) {
+        setSelectedFmdId(res.id || res._id);
+        setMobileTab('dossier');
+      }
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (deleteTargetId) {
+      await deleteFmdItem(deleteTargetId);
+      if (selectedFmdId === deleteTargetId) {
+        const remaining = fmdList.filter((item) => item.id !== deleteTargetId && item._id !== deleteTargetId);
+        setSelectedFmdId(remaining[0]?.id || remaining[0]?._id || null);
+      }
+      setDeleteTargetId(null);
     }
   };
 
@@ -88,8 +96,24 @@ export default function FmdSdPage() {
     setPrintModalOpen(true);
   };
 
-  // Download authenticated binary document from server disk custody
+  // Download authenticated binary document from server disk custody or local IndexedDB
   const handleDownloadDoc = async (doc) => {
+    // If local data URL exists (stored in IndexedDB)
+    if (doc.dataUrl) {
+      const a = document.createElement('a');
+      a.href = doc.dataUrl;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      addToast({
+        type: 'success',
+        title: 'Local File Downloaded',
+        message: `Retrieved "${doc.name}" from local IndexedDB storage.`,
+      });
+      return;
+    }
+
     const targetFmdId = selectedItem?._id || selectedItem?.id;
     const docId = doc._id || doc.id;
 
@@ -114,26 +138,43 @@ export default function FmdSdPage() {
     });
   };
 
-  // Download Word (.doc) custody certificate in Hindi or English
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Client-side Word (.docx) custody certificate generation (Hindi & English)
   const handleDownloadWordCertificate = async (item, lang = 'hi') => {
-    const targetId = item._id || item.id;
-    const filename = `${item.tenderNumber.replace(/[\/\\]/g, '_')}_Custody_Certificate_${lang.toUpperCase()}.doc`;
-
     try {
-      if (targetId && (targetId.length === 24 || targetId.match(/^[0-9a-fA-F]{24}$/))) {
-        await api.fmdSd.downloadDocx(targetId, lang, filename);
-        addToast({
-          type: 'success',
-          title: 'Word Certificate Downloaded',
-          message: `Generated bilingual certificate (${lang === 'hi' ? 'Hindi' : 'English'}) for ${item.tenderNumber}.`,
-        });
-        return;
-      }
+      await generateFmdCustodyDocx(item, lang);
+      addToast({
+        type: 'success',
+        title: 'Word Certificate Downloaded',
+        message: `Generated native Microsoft Word (.docx) certificate (${lang === 'hi' ? 'Hindi' : 'English'}) for ${item.tenderNumber}.`,
+      });
     } catch (err) {
-      console.warn('Word certificate download error:', err.message);
+      console.warn('Word certificate generation error:', err.message);
+      addToast({
+        type: 'error',
+        title: 'Generation Failed',
+        message: err.message || 'Could not generate Word certificate.',
+      });
     }
+  };
 
-    handleOpenPrint(item);
+  // Client-side Excel (.xlsx) Register Export
+  const handleExportExcel = () => {
+    if (fmdList.length === 0) {
+      addToast({
+        type: 'warning',
+        title: 'No Records',
+        message: 'No FMD / SD security records available to export.',
+      });
+      return;
+    }
+    exportFmdSdExcel(fmdList);
+    addToast({
+      type: 'success',
+      title: 'Excel Register Exported',
+      message: `Downloaded FMD / SD register (${fmdList.length} records) as .xlsx.`,
+    });
   };
 
   return (
@@ -150,14 +191,32 @@ export default function FmdSdPage() {
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            icon={FileSpreadsheet}
+            onClick={handleExportExcel}
+            className="w-full sm:w-auto text-xs"
+            title="Export complete FMD / SD register to Excel (.xlsx)"
+          >
+            Export Excel (.xlsx)
+          </Button>
+          <Button
+            variant="outline"
+            icon={Printer}
+            onClick={() => setIsReportModalOpen(true)}
+            className="w-full sm:w-auto text-xs"
+            title="Print or save A4 PDF FMD / SD custody register report"
+          >
+            Print / PDF Register
+          </Button>
           {selectedItem && (
             <>
               <Button
                 variant="outline"
                 icon={Download}
                 onClick={() => handleDownloadWordCertificate(selectedItem, 'hi')}
-                title="Download Hindi Word Certificate"
-                className="flex-1 sm:flex-initial"
+                title="Download Hindi Word Certificate (.docx)"
+                className="flex-1 sm:flex-initial text-xs"
               >
                 Word (हिंदी)
               </Button>
@@ -165,9 +224,9 @@ export default function FmdSdPage() {
                 variant="navy"
                 icon={Printer}
                 onClick={() => handleOpenPrint(selectedItem)}
-                className="flex-1 sm:flex-initial shadow-sm"
+                className="flex-1 sm:flex-initial shadow-sm text-xs"
               >
-                Print Format
+                Certificate PDF
               </Button>
             </>
           )}
@@ -177,17 +236,43 @@ export default function FmdSdPage() {
               setEditingItem(null);
               setIsModalOpen(true);
             }}
-            className="w-full sm:w-auto shadow-sm"
+            className="w-full sm:w-auto shadow-sm text-xs"
           >
             Register FMD / SD
           </Button>
         </div>
       </div>
 
+      {/* Mobile View Switcher (Visible on phone/tablet screens) */}
+      <div className="lg:hidden flex rounded-xl bg-slate-200/80 p-1 text-xs font-semibold">
+        <button
+          type="button"
+          onClick={() => setMobileTab('list')}
+          className={`flex-1 py-2 text-center rounded-lg transition-all ${
+            mobileTab === 'list'
+              ? 'bg-white text-blue-700 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Tender Records ({filteredFmdList.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('dossier')}
+          className={`flex-1 py-2 text-center rounded-lg transition-all ${
+            mobileTab === 'dossier'
+              ? 'bg-white text-blue-700 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Active Dossier {selectedItem ? `(${selectedItem.tenderNumber})` : ''}
+        </button>
+      </div>
+
       {/* Main Grid: Left is FMD list, Right is Active FMD Dossier & Uploads */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Tender & FMD Records List (5 cols) */}
-        <div className="lg:col-span-5 space-y-3">
+        <div className={`lg:col-span-5 space-y-3 ${mobileTab === 'dossier' ? 'hidden lg:block' : 'block'}`}>
           <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -207,13 +292,16 @@ export default function FmdSdPage() {
             />
           </div>
 
-          <div className="space-y-2 max-h-[300px] sm:max-h-[400px] lg:max-h-[600px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[400px] lg:max-h-[600px] overflow-y-auto pr-1">
             {filteredFmdList.map((item) => {
-              const isSelected = selectedItem?.id === item.id;
+              const isSelected = selectedItem?.id === item.id || selectedItem?._id === item.id || selectedItem?.id === item._id;
               return (
                 <div
-                  key={item.id}
-                  onClick={() => setSelectedFmdId(item.id)}
+                  key={item.id || item._id}
+                  onClick={() => {
+                    setSelectedFmdId(item.id || item._id);
+                    setMobileTab('dossier');
+                  }}
                   className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all duration-150 ${
                     isSelected
                       ? 'bg-blue-50/70 border-blue-400 shadow-xs ring-1 ring-blue-500/20'
@@ -251,7 +339,7 @@ export default function FmdSdPage() {
 
         {/* Right Column: Detailed Tender Dossier & Document Custody (7 cols) */}
         {selectedItem ? (
-          <div className="lg:col-span-7 space-y-5">
+          <div className={`lg:col-span-7 space-y-5 ${mobileTab === 'list' ? 'hidden lg:block' : 'block'}`}>
             {/* Active Record Card */}
             <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
@@ -285,6 +373,16 @@ export default function FmdSdPage() {
                     className="flex-1 sm:flex-initial"
                   >
                     Edit Record
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    icon={Trash2}
+                    onClick={() => setDeleteTargetId(selectedItem._id || selectedItem.id)}
+                    className="flex-1 sm:flex-initial"
+                    title="Delete record"
+                  >
+                    Delete
                   </Button>
                 </div>
               </div>
@@ -342,8 +440,8 @@ export default function FmdSdPage() {
             </div>
 
             {/* Document Upload Interface (Frontend Preview - Session Bound) */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                     FMD / SD Document Custody & Upload
@@ -352,7 +450,7 @@ export default function FmdSdPage() {
                     Attach signed BG scans, FDR receipts, and release verification certificates.
                   </p>
                 </div>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded border border-emerald-200">
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded border border-emerald-200 w-fit">
                   Secure Server Storage Active
                 </span>
               </div>
@@ -360,7 +458,7 @@ export default function FmdSdPage() {
               {/* Upload Dropzone */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-5 text-center cursor-pointer bg-slate-50/50 hover:bg-blue-50/20 transition-all group"
+                className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-4 sm:p-5 text-center cursor-pointer bg-slate-50/50 hover:bg-blue-50/20 transition-all group"
               >
                 <input
                   type="file"
@@ -403,7 +501,7 @@ export default function FmdSdPage() {
                 <div className="space-y-2">
                   {(selectedItem.uploadedDocuments || []).map((doc) => (
                     <div
-                      key={doc.id}
+                      key={doc.id || doc._id}
                       className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50/80 transition-colors text-xs"
                     >
                       <div className="flex items-center gap-2.5 overflow-hidden">
@@ -476,6 +574,27 @@ export default function FmdSdPage() {
         isOpen={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
         fmdItem={activePrintItem}
+      />
+
+      {/* Printable FMD / SD Register Report Modal */}
+      <PrintableReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="FMD & Security Deposit (SD) Custody Register Report"
+        subtitle="Public Works Department | Division No. 1"
+        reportType="fmd-sd"
+        data={fmdList}
+        onExportExcel={handleExportExcel}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={Boolean(deleteTargetId)}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={confirmDelete}
+        title="Delete FMD / SD Security Record?"
+        message="Are you sure you want to delete this security custody record? This action will remove the record and attached document associations."
+        confirmText="Confirm Delete"
       />
     </div>
   );

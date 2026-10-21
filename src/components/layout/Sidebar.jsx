@@ -9,7 +9,7 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
-  
+  X,
   Landmark,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -103,7 +103,7 @@ export default function Sidebar({ collapsed, onToggle, onNavigate }) {
           aria-label="Close navigation drawer"
           title="Close Navigation"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 

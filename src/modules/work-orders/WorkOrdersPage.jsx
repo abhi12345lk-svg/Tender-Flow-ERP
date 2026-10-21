@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Eye, Edit2, Trash2, FileSpreadsheet, Building, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, Eye, Edit2, Trash2, FileSpreadsheet, Building, AlertCircle, Printer } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import DataTable from '../../components/common/DataTable';
@@ -8,9 +8,11 @@ import Badge from '../../components/common/Badge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import WorkOrderModal from './WorkOrderModal';
 import WorkOrderDetailModal from './WorkOrderDetailModal';
+import PrintableReportModal from '../../components/common/PrintableReportModal';
+import { exportWorkOrdersExcel } from '../../services/export';
 
 export default function WorkOrdersPage() {
-  const { workOrders, addWorkOrder, updateWorkOrder, deleteWorkOrder, subdivisions, financialYears } = useApp();
+  const { workOrders, addWorkOrder, updateWorkOrder, deleteWorkOrder, subdivisions, financialYears, activeFY, addToast } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -26,6 +28,25 @@ export default function WorkOrdersPage() {
   const [editingWo, setEditingWo] = useState(null);
   const [viewingWo, setViewingWo] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Client-side Excel (.xlsx) Register Export
+  const handleExportExcel = () => {
+    if (filteredData.length === 0) {
+      addToast({
+        type: 'warning',
+        title: 'No Records',
+        message: 'No work orders available to export.',
+      });
+      return;
+    }
+    exportWorkOrdersExcel(filteredData, { activeFY });
+    addToast({
+      type: 'success',
+      title: 'Excel Register Exported',
+      message: `Downloaded work orders register (${filteredData.length} records) as .xlsx.`,
+    });
+  };
 
   // Filter logic
   const filteredData = workOrders.filter((wo) => {
@@ -202,9 +223,29 @@ export default function WorkOrdersPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
-          Create Work Order
-        </Button>
+        <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            icon={FileSpreadsheet}
+            onClick={handleExportExcel}
+            className="w-full sm:w-auto text-xs"
+            title="Export filtered work orders to Excel (.xlsx)"
+          >
+            Export Excel (.xlsx)
+          </Button>
+          <Button
+            variant="outline"
+            icon={Printer}
+            onClick={() => setIsReportModalOpen(true)}
+            className="w-full sm:w-auto text-xs"
+            title="Print or save A4 PDF work order register report"
+          >
+            Print / PDF Register
+          </Button>
+          <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
+            Create Work Order
+          </Button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -327,6 +368,18 @@ export default function WorkOrdersPage() {
         onClose={() => setViewingWo(null)}
         workOrder={viewingWo}
         onEdit={handleEdit}
+      />
+
+      {/* Printable Work Orders Register Report Modal */}
+      <PrintableReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Work Order Master Register & Sanction Summary"
+        subtitle={`Public Works Department | Division No. 1 | Active FY: FY ${activeFY || 'ALL'}`}
+        reportType="work-orders"
+        data={filteredData}
+        activeFY={activeFY}
+        onExportExcel={handleExportExcel}
       />
 
       {/* Delete Confirmation */}

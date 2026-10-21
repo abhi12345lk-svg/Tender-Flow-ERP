@@ -1,19 +1,40 @@
 import React, { useState } from 'react';
-import { Plus, Network, Edit2, Trash2, Building2, CheckCircle2, FileSpreadsheet, Receipt } from 'lucide-react';
+import { Plus, Network, Edit2, Trash2, Building2, CheckCircle2, FileSpreadsheet, Receipt, Printer } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import DataTable from '../../components/common/DataTable';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import SubdivisionModal from './SubdivisionModal';
+import PrintableReportModal from '../../components/common/PrintableReportModal';
+import { exportSubdivisionsExcel } from '../../services/export';
 
 export default function SubdivisionsPage() {
-  const { subdivisions, addSubdivision, updateSubdivision, deleteSubdivision, workOrders, billingList } = useApp();
+  const { subdivisions, addSubdivision, updateSubdivision, deleteSubdivision, workOrders, billingList, addToast } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSub, setEditingSub] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [selectedSubdivisionId, setSelectedSubdivisionId] = useState('ALL');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Client-side Excel (.xlsx) Register Export
+  const handleExportExcel = () => {
+    if (filteredSubdivisions.length === 0) {
+      addToast({
+        type: 'warning',
+        title: 'No Records',
+        message: 'No subdivision records available to export.',
+      });
+      return;
+    }
+    exportSubdivisionsExcel(filteredSubdivisions, workOrders);
+    addToast({
+      type: 'success',
+      title: 'Excel Register Exported',
+      message: `Downloaded subdivisions register (${filteredSubdivisions.length} records) as .xlsx.`,
+    });
+  };
 
   const filteredSubdivisions = selectedSubdivisionId === 'ALL'
     ? subdivisions
@@ -39,6 +60,18 @@ export default function SubdivisionsPage() {
 
   const confirmDelete = () => {
     if (deleteTargetId) {
+      const associatedWOs = workOrders.filter(
+        (w) => w.subdivisionId === deleteTargetId || w.subdivision?._id === deleteTargetId
+      );
+      if (associatedWOs.length > 0) {
+        addToast({
+          type: 'error',
+          title: 'Cannot Delete Subdivision',
+          message: `Action blocked: ${associatedWOs.length} Work Order(s) are currently assigned to this subdivision.`,
+        });
+        setDeleteTargetId(null);
+        return;
+      }
       deleteSubdivision(deleteTargetId);
       setDeleteTargetId(null);
     }
@@ -134,9 +167,29 @@ export default function SubdivisionsPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
-          Add Subdivision
-        </Button>
+        <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            icon={FileSpreadsheet}
+            onClick={handleExportExcel}
+            className="w-full sm:w-auto text-xs"
+            title="Export subdivisions register to Excel (.xlsx)"
+          >
+            Export Excel (.xlsx)
+          </Button>
+          <Button
+            variant="outline"
+            icon={Printer}
+            onClick={() => setIsReportModalOpen(true)}
+            className="w-full sm:w-auto text-xs"
+            title="Print or save A4 PDF subdivision register report"
+          >
+            Print / PDF Register
+          </Button>
+          <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
+            Add Subdivision
+          </Button>
+        </div>
       </div>
 
       {/* Subdivision Selector / Filter Toolbar */}
@@ -227,6 +280,17 @@ export default function SubdivisionsPage() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
         editingSubdivision={editingSub}
+      />
+
+      {/* Printable Subdivisions Register Report Modal */}
+      <PrintableReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Subdivisions Performance & Allocation Summary"
+        subtitle="Public Works Department | Division No. 1"
+        reportType="subdivisions"
+        data={filteredSubdivisions}
+        onExportExcel={handleExportExcel}
       />
 
       {/* Delete Confirmation */}

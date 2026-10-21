@@ -11,16 +11,18 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatDate, formatCurrency } from '../../utils/formatters';
-import { api } from '../../services/apiClient';
 import DataTable from '../../components/common/DataTable';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import AgreementModal from './AgreementModal';
 import AgreementPrintPreviewModal from './AgreementPrintPreviewModal';
+import PrintableReportModal from '../../components/common/PrintableReportModal';
+import { generateAgreementDocx, exportAgreementsExcel } from '../../services/export';
 
 export default function AgreementsPage() {
   const { agreements, addAgreement, updateAgreement, deleteAgreement, workOrders, addToast } = useApp();
@@ -78,56 +80,42 @@ export default function AgreementsPage() {
     }
   };
 
-  // Word Document Action: Backend .doc generation with fallback
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Client-side Word Document (.docx) Export using docx
   const handleWordExport = async (agr) => {
-    const targetId = agr._id || agr.id;
-    const safeFilename = `${(agr.agreementNumber || 'Agreement').replace(/[\/\\]/g, '_')}_Official_Contract.doc`;
-
     try {
-      if (targetId && (targetId.length === 24 || targetId.match(/^[0-9a-fA-F]{24}$/))) {
-        await api.agreements.downloadDocx(targetId, safeFilename);
-        addToast({
-          type: 'success',
-          title: 'Word Document Downloaded',
-          message: `Official government contract document for ${agr.agreementNumber} generated and downloaded.`,
-        });
-        return;
-      }
+      await generateAgreementDocx(agr);
+      addToast({
+        type: 'success',
+        title: 'Word Document Downloaded',
+        message: `Generated native Microsoft Word (.docx) contract for ${agr.agreementNumber}.`,
+      });
     } catch (err) {
-      console.warn('Backend Word doc generation failed, using fallback:', err.message);
+      console.warn('Word export failed:', err.message);
+      addToast({
+        type: 'error',
+        title: 'Export Failed',
+        message: err.message || 'Could not generate Word document.',
+      });
     }
+  };
 
-    // Client fallback if offline or in-memory sample
-    const blob = new Blob(
-      [
-        `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta charset='utf-8'><title>${agr.agreementNumber}</title></head>
-<body>
-<h2>OFFICIAL GOVERNMENT AGREEMENT DOCUMENT</h2>
-<p><b>Agreement No:</b> ${agr.agreementNumber}</p>
-<p><b>Work Order:</b> ${agr.workOrderNumber}</p>
-<p><b>Tender:</b> ${agr.tenderNumber}</p>
-<p><b>Contractor:</b> ${agr.contractorName}</p>
-<p><b>Date:</b> ${agr.agreementDate}</p>
-<hr/>
-<p>${agr.content || 'Standard Government PWD Contract Terms'}</p>
-</body></html>`
-      ],
-      { type: 'application/msword;charset=utf-8' }
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = safeFilename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
+  // Client-side Excel (.xlsx) Register Export
+  const handleExportExcel = () => {
+    if (filteredAgreements.length === 0) {
+      addToast({
+        type: 'warning',
+        title: 'No Records',
+        message: 'No agreement records available to export.',
+      });
+      return;
+    }
+    exportAgreementsExcel(filteredAgreements);
     addToast({
       type: 'success',
-      title: 'Word Document Exported',
-      message: `Downloaded Word draft for ${agr.agreementNumber}.`,
+      title: 'Excel Register Exported',
+      message: `Downloaded agreements register (${filteredAgreements.length} records) as .xlsx.`,
     });
   };
 
@@ -255,9 +243,29 @@ export default function AgreementsPage() {
           </p>
         </div>
 
-        <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
-          New Agreement
-        </Button>
+        <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            icon={FileSpreadsheet}
+            onClick={handleExportExcel}
+            className="w-full sm:w-auto text-xs"
+            title="Export agreements register to Excel (.xlsx)"
+          >
+            Export Excel (.xlsx)
+          </Button>
+          <Button
+            variant="outline"
+            icon={Printer}
+            onClick={() => setIsReportModalOpen(true)}
+            className="w-full sm:w-auto text-xs"
+            title="Print or save A4 PDF agreement register report"
+          >
+            Print / PDF Register
+          </Button>
+          <Button icon={Plus} onClick={handleCreateNew} className="w-full sm:w-auto shadow-sm">
+            New Agreement
+          </Button>
+        </div>
       </div>
 
       {/* Step 3 Workflow Scope Alert */}
@@ -365,6 +373,17 @@ export default function AgreementsPage() {
         isOpen={Boolean(previewAgreement)}
         onClose={() => setPreviewAgreement(null)}
         agreement={previewAgreement}
+      />
+
+      {/* Printable Register Report Modal */}
+      <PrintableReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Official Contract Agreements Register Report"
+        subtitle="Public Works Department | Division No. 1"
+        reportType="agreements"
+        data={filteredAgreements}
+        onExportExcel={handleExportExcel}
       />
 
       {/* Delete Confirmation */}
