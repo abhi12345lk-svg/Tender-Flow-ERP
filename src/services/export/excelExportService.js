@@ -40,8 +40,8 @@ export const exportWorkOrdersExcel = (workOrders = [], options = {}) => {
 
   const headers = [
     'S.No.',
-    'Work Order No. (M)',
-    'Tender No. (M)',
+    'Work Order No.',
+    'Tender No.',
     'Work Description / Title',
     'Contractor / Agency',
     'Sanctioned Amount (₹)',
@@ -151,7 +151,7 @@ export const exportBillingExcel = (billingList = [], options = {}) => {
     'S.No.',
     'Invoice No.',
     'Work Order No.',
-    'Tender No. (M)',
+    'Tender No.',
     'Contractor / Vendor',
     'Subdivision',
     'Invoice Date',
@@ -482,7 +482,7 @@ export const exportAgreementsExcel = (agreements = [], options = {}) => {
     'Agreement Number',
     'Date of Execution',
     'Work Order Reference',
-    'Tender Number (M)',
+    'Tender Number',
     'Awarded Contractor / Agency',
     'Template Form Standard',
     'E-Stamp Duty Certificate No.',
@@ -554,7 +554,7 @@ export const exportFmdSdExcel = (fmdList = [], options = {}) => {
 
   const headers = [
     'S.No.',
-    'Tender Number (M)',
+    'Tender Number',
     'Related Work Order Ref',
     'Tender Title / Works Description',
     'Contractor / Agency Name',
@@ -565,7 +565,7 @@ export const exportFmdSdExcel = (fmdList = [], options = {}) => {
     'Earnest Money EMD (₹)',
     'Validity Expiry Date',
     'FMD Custody Status',
-    'Departmental Verification Status',
+    'Verification Status',
   ];
 
   let totalSd = 0;

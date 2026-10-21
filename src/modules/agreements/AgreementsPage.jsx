@@ -38,8 +38,8 @@ export default function AgreementsPage() {
 
   const filteredAgreements = agreements.filter((agr) => {
     const matchesSearch =
-      agr.agreementNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agr.workOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      agr.agreementNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      agr.workOrderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agr.contractorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agr.templateType?.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -141,7 +141,7 @@ export default function AgreementsPage() {
       render: (val, row) => (
         <div>
           <span className="font-semibold text-slate-900 font-mono text-xs block">{val}</span>
-          <span className="text-[11px] text-slate-500 font-mono">Tender (M): {row.tenderNumber}</span>
+          <span className="text-[11px] text-slate-500 font-mono">Tender: {row.tenderNumber}</span>
         </div>
       ),
     },
@@ -286,7 +286,7 @@ export default function AgreementsPage() {
             <FileSignature className="h-4 w-4" />
           </div>
           <div className="truncate">
-            <span className="font-semibold text-xs text-slate-800 block">PWD Form F-2</span>
+            <span className="font-semibold text-xs text-slate-800 block">Contract Form F-2</span>
             <span className="text-[10px] text-slate-400">Lump Sum Contract Standard</span>
           </div>
         </div>
@@ -329,7 +329,7 @@ export default function AgreementsPage() {
             className="w-full sm:w-auto px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0 cursor-pointer"
           >
             <option value="ALL">All Template Forms</option>
-            <option value="Standard PWD Contract Form F-2 (Lump Sum)">PWD Form F-2 (Lump Sum)</option>
+            <option value="Standard PWD Contract Form F-2 (Lump Sum)">Standard Contract Form F-2 (Lump Sum)</option>
             <option value="Item Rate Agreement Form B-1">Item Rate Form B-1</option>
           </select>
         </div>

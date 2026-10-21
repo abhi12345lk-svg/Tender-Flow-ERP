@@ -63,8 +63,8 @@ export default function BillingPage() {
 
   const filteredBills = billingList.filter((bill) => {
     const matchesSearch =
-      bill.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bill.workOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bill.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bill.workOrderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bill.contractorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bill.tenderNumber?.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -251,7 +251,7 @@ export default function BillingPage() {
             Billing Management
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Running account bills, GST computation, PWD statutory deduction scrutiny, and net disbursement calculations.
+            Running account bills, GST computation, statutory deduction scrutiny, and net disbursement calculations.
           </p>
         </div>
 

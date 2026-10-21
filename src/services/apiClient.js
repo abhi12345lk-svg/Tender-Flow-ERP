@@ -3,8 +3,9 @@
  * Configurable via VITE_API_BASE_URL environment variable
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
-const HEALTH_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').replace(/\/v1\/?$/, '/health');
+const RAW_API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:5000/api/v1';
+const API_BASE_URL = RAW_API_URL.replace(/\/+$/, '');
+const HEALTH_URL = API_BASE_URL.replace(/\/v1\/?$/, '/health');
 
 /**
  * Core HTTP Request Wrapper
@@ -76,12 +77,32 @@ async function downloadBlob(endpoint, defaultFilename = 'download') {
       throw new Error(result?.message || `Download failed with HTTP ${response.status}`);
     }
 
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
     const disposition = response.headers.get('content-disposition');
     let filename = defaultFilename;
     if (disposition && disposition.includes('filename=')) {
       const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
       if (match && match[1]) {
         filename = match[1].replace(/['"]/g, '').trim();
+      }
+    }
+
+    // Inspect genuine document payload format based on Content-Type header:
+    // Only use .docx if the returned content is genuinely OpenXML DOCX.
+    // HTML-based Word documents (application/msword or text/html) MUST remain .doc or .html
+    // because giving an HTML document a .docx extension causes Word to fail with XML parsing / zip errors.
+    const isDocx = contentType.includes('vnd.openxmlformats-officedocument.wordprocessingml.document');
+    const isMsWord = contentType.includes('application/msword') || contentType.includes('text/html');
+
+    if (filename.toLowerCase().endsWith('.docx') && !isDocx && isMsWord) {
+      filename = filename.replace(/\.docx$/i, '.doc');
+    } else if (!filename.includes('.')) {
+      if (isDocx) {
+        filename += '.docx';
+      } else if (isMsWord) {
+        filename += '.doc';
+      } else if (contentType.includes('application/pdf')) {
+        filename += '.pdf';
       }
     }
 

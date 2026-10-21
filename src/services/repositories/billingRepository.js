@@ -26,13 +26,27 @@ export class BillingRepository extends BaseRepository {
   }
 
   /**
-   * Compute billing aggregate statistics for a work order locally
+   * Filter single bill by Invoice Number using indexed key
+   */
+  async getByInvoiceNumber(invoiceNumber) {
+    if (!invoiceNumber) return null;
+    return await this.table.where('invoiceNumber').equals(invoiceNumber).first();
+  }
+
+  /**
+   * Compute billing aggregate statistics for a work order locally using verified property names
    */
   async getSummaryForWorkOrder(workOrderId) {
     const bills = await this.getByWorkOrder(workOrderId);
-    const totalGross = bills.reduce((sum, b) => sum + (Number(b.grossAmount) || 0), 0);
-    const totalPassed = bills.reduce((sum, b) => sum + (Number(b.passedAmount) || 0), 0);
-    const totalNet = bills.reduce((sum, b) => sum + (Number(b.netPayableAmount) || 0), 0);
+    // Total Gross: sum of gross/total amounts across all submitted & passed bills
+    const totalGross = bills.reduce((sum, b) => sum + (Number(b.totalAmount ?? b.grossAmount ?? b.amount) || 0), 0);
+    // Total Passed: sum of bills officially reviewed and marked 'Passed'
+    const totalPassed = bills.reduce((sum, b) => {
+      const isPassed = b.status === 'Passed' || b.paymentStatus === 'Passed';
+      return isPassed ? sum + (Number(b.totalAmount ?? b.passedAmount ?? b.amount) || 0) : sum;
+    }, 0);
+    // Total Net: sum of actual net payable after statutory deductions
+    const totalNet = bills.reduce((sum, b) => sum + (Number(b.netPayable ?? b.netPayableAmount) || 0), 0);
     const count = bills.length;
 
     return {

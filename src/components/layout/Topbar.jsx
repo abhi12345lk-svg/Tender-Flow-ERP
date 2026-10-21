@@ -20,6 +20,7 @@ import Button from '../common/Button';
 import NetworkStatusBadge from './NetworkStatusBadge';
 import DataManagementModal from '../common/DataManagementModal';
 import CloudSyncModal from '../common/CloudSyncModal';
+import AuditTrailModal from '../common/AuditTrailModal';
 
 export default function Topbar({ onToggleSidebar }) {
   const {
@@ -36,6 +37,7 @@ export default function Topbar({ onToggleSidebar }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [dataModalOpen, setDataModalOpen] = useState(false);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const profileRef = useRef(null);
@@ -89,7 +91,7 @@ export default function Topbar({ onToggleSidebar }) {
             title="Review differences and safely synchronize with cloud"
           >
             <Cloud className="h-3.5 w-3.5 shrink-0" />
-            <span className="hidden sm:inline">Sync Review</span>
+            <span className="hidden sm:inline">Cloud Sync</span>
           </button>
 
           {/* Global Financial Year Quick Selector */}
@@ -154,14 +156,14 @@ export default function Topbar({ onToggleSidebar }) {
               className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-slate-200 bg-white p-1 sm:p-1.5 sm:px-3 hover:bg-slate-50 active:bg-slate-100 transition-colors"
             >
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-700 text-[11px] font-bold text-white shadow-xs shrink-0">
-                RS
+                AD
               </div>
               <div className="hidden text-left sm:block">
                 <span className="block text-xs font-semibold text-slate-800 leading-tight">
-                  Er. Rajesh Sharma
+                  Rajesh Sharma
                 </span>
                 <span className="block text-[10px] text-slate-500 font-medium">
-                  Executive Engineer
+                  Operations Director
                 </span>
               </div>
               <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -171,11 +173,11 @@ export default function Topbar({ onToggleSidebar }) {
             {profileOpen && (
               <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-24px)] rounded-xl border border-slate-200 bg-white p-2 shadow-xl z-50">
                 <div className="border-b border-slate-100 px-3 py-2">
-                  <p className="text-xs font-bold text-slate-900">Er. Rajesh Sharma</p>
-                  <p className="text-[11px] text-slate-500 truncate">rajesh.sharma@pwd.gov.in</p>
+                  <p className="text-xs font-bold text-slate-900">Rajesh Sharma</p>
+                  <p className="text-[11px] text-slate-500 truncate">admin@tenderflow.erp</p>
                   <div className="mt-1.5 flex items-center gap-1.5">
                     <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-medium text-emerald-700">Govt. Official Session</span>
+                    <span className="text-[10px] font-medium text-emerald-700">Administrator Session</span>
                   </div>
                 </div>
 
@@ -188,7 +190,7 @@ export default function Topbar({ onToggleSidebar }) {
                     className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors text-left"
                   >
                     <User className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                    <span>Officer Credentials & Role</span>
+                    <span>User Profile & Role</span>
                   </button>
 
                   <button
@@ -205,16 +207,12 @@ export default function Topbar({ onToggleSidebar }) {
                   <button
                     onClick={() => {
                       setProfileOpen(false);
-                      addToast({
-                        type: 'info',
-                        title: 'Audit Trail',
-                        message: 'Audit logging for government transactions is active in database.',
-                      });
+                      setAuditModalOpen(true);
                     }}
                     className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors text-left"
                   >
                     <Shield className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                    <span>Divisional Security & Logs</span>
+                    <span>Activity & Audit Log</span>
                   </button>
                 </div>
 
@@ -225,7 +223,7 @@ export default function Topbar({ onToggleSidebar }) {
                       addToast({
                         type: 'info',
                         title: 'Production Session Active',
-                        message: 'Logged in under PWD Division 1 Super-Admin role.',
+                        message: 'Logged in under Enterprise Super-Admin role.',
                       });
                     }}
                     className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-blue-600 hover:bg-blue-50 font-medium transition-colors text-left"
@@ -244,8 +242,8 @@ export default function Topbar({ onToggleSidebar }) {
       <Modal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
-        title="Divisional Officer Profile"
-        subtitle="Government Works Administration & DDO Authority"
+        title="User Account & Role Profile"
+        subtitle="Enterprise Project Administration & Access Controls"
         size="md"
         footer={
           <Button variant="secondary" onClick={() => setProfileModalOpen(false)} className="w-full sm:w-auto">
@@ -256,14 +254,14 @@ export default function Topbar({ onToggleSidebar }) {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200 text-center sm:text-left">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-700 text-lg font-bold text-white shadow-xs">
-              RS
+              AD
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-900">Er. Rajesh Sharma</h4>
-              <p className="text-xs text-slate-600">Executive Engineer / Drawing & Disbursing Officer (DDO)</p>
+              <h4 className="text-sm font-bold text-slate-900">Rajesh Sharma</h4>
+              <p className="text-xs text-slate-600">Operations Director / Senior Project Lead</p>
               <div className="mt-1 flex items-center justify-center sm:justify-start gap-2">
                 <span className="text-[11px] font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
-                  DDO Code: 2408-PWD-DIV1
+                  User ID: ADM-2026-01
                 </span>
               </div>
             </div>
@@ -271,16 +269,16 @@ export default function Topbar({ onToggleSidebar }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-xs">
             <div className="p-3 border rounded-lg bg-white">
-              <span className="text-slate-400 block mb-0.5 font-medium">Department</span>
-              <span className="font-semibold text-slate-800">Public Works Department (B&R)</span>
+              <span className="text-slate-400 block mb-0.5 font-medium">Organization</span>
+              <span className="font-semibold text-slate-800">Infrastructure & Commercial Operations</span>
             </div>
             <div className="p-3 border rounded-lg bg-white">
-              <span className="text-slate-400 block mb-0.5 font-medium">Jurisdiction</span>
-              <span className="font-semibold text-slate-800">Division No. 1, Civil Enclave</span>
+              <span className="text-slate-400 block mb-0.5 font-medium">Operations Branch</span>
+              <span className="font-semibold text-slate-800">Central Commercial Projects</span>
             </div>
             <div className="p-3 border rounded-lg bg-white">
-              <span className="text-slate-400 block mb-0.5 font-medium">Financial Sanction Limit</span>
-              <span className="font-semibold text-emerald-700">₹ 5,00,00,000 (Class A)</span>
+              <span className="text-slate-400 block mb-0.5 font-medium">Authorization Limit</span>
+              <span className="font-semibold text-emerald-700">₹ 5,00,00,000 (Tier 1)</span>
             </div>
             <div className="p-3 border rounded-lg bg-white">
               <span className="text-slate-400 block mb-0.5 font-medium">Access Tier</span>
@@ -310,6 +308,12 @@ export default function Topbar({ onToggleSidebar }) {
       <CloudSyncModal
         isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
+      />
+
+      {/* Divisional Audit Trail Modal */}
+      <AuditTrailModal
+        isOpen={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
       />
     </>
   );

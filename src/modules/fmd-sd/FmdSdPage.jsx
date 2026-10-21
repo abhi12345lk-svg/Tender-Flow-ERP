@@ -26,6 +26,11 @@ import FmdSdModal from './FmdSdModal';
 import FmdSdPrintModal from './FmdSdPrintModal';
 import PrintableReportModal from '../../components/common/PrintableReportModal';
 import { generateFmdCustodyDocx, exportFmdSdExcel } from '../../services/export';
+import {
+  calculateInstrumentExpiry,
+  summarizeFmdExpiries,
+  DEFAULT_EXPIRY_WARNING_DAYS,
+} from '../../services/fmd/fmdExpiryService';
 
 export default function FmdSdPage() {
   const { fmdList, addFmdItem, updateFmdItem, deleteFmdItem, addFmdDocument, removeFmdDocument, addToast, isBackendConnected } = useApp();
@@ -33,6 +38,8 @@ export default function FmdSdPage() {
   const [selectedFmdId, setSelectedFmdId] = useState(fmdList[0]?.id || null);
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'dossier' for phone screens
+  const [warningWindowDays, setWarningWindowDays] = useState(DEFAULT_EXPIRY_WARNING_DAYS);
+  const [expiryFilter, setExpiryFilter] = useState('all'); // 'all' | 'active' | 'expiring_soon' | 'expired'
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,14 +52,20 @@ export default function FmdSdPage() {
   const fileInputRef = useRef(null);
 
   const selectedItem = fmdList.find((item) => item.id === selectedFmdId || item._id === selectedFmdId) || fmdList[0];
+  const expirySummary = summarizeFmdExpiries(fmdList, warningWindowDays);
 
   const filteredFmdList = fmdList.filter((item) => {
-    return (
-      item.tenderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.tenderTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      item.tenderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.tenderTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.contractorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.workOrderNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+      item.workOrderNumber?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (expiryFilter === 'all') return true;
+    const expiry = calculateInstrumentExpiry(item.validityDate, warningWindowDays);
+    return expiry.status === expiryFilter;
   });
 
   const handleFileUpload = (e) => {
@@ -243,6 +256,7 @@ export default function FmdSdPage() {
         </div>
       </div>
 
+
       {/* Mobile View Switcher (Visible on phone/tablet screens) */}
       <div className="lg:hidden flex rounded-xl bg-slate-200/80 p-1 text-xs font-semibold">
         <button
@@ -279,7 +293,7 @@ export default function FmdSdPage() {
                 Tender Security Records
               </span>
               <span className="text-[11px] text-slate-400 font-mono">
-                {filteredFmdList.length} Active
+                {filteredFmdList.length} shown of {fmdList.length}
               </span>
             </div>
 
@@ -290,11 +304,36 @@ export default function FmdSdPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-3 py-2 sm:py-1.5 text-base sm:text-xs rounded-md border border-slate-300 focus:outline-none focus:border-blue-600 min-h-[40px] sm:min-h-0"
             />
+
+            {/* Expiry Status Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+              <span className="text-slate-400 mr-0.5">Filter:</span>
+              {[
+                { id: 'all', label: `All (${fmdList.length})` },
+                { id: 'active', label: `Valid (${expirySummary.activeCount})` },
+                { id: 'expiring_soon', label: `Expiring (${expirySummary.expiringSoonCount})` },
+                { id: 'expired', label: `Expired (${expirySummary.expiredCount})` },
+              ].map((pill) => (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => setExpiryFilter(pill.id)}
+                  className={`px-2 py-0.5 rounded-full font-medium transition-all cursor-pointer ${
+                    expiryFilter === pill.id
+                      ? 'bg-blue-600 text-white font-bold'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-2 max-h-[400px] lg:max-h-[600px] overflow-y-auto pr-1">
             {filteredFmdList.map((item) => {
               const isSelected = selectedItem?.id === item.id || selectedItem?._id === item.id || selectedItem?.id === item._id;
+              const expiry = calculateInstrumentExpiry(item.validityDate, warningWindowDays);
               return (
                 <div
                   key={item.id || item._id}
@@ -310,9 +349,22 @@ export default function FmdSdPage() {
                 >
                   <div className="flex items-start justify-between gap-2 mb-1.5">
                     <span className="font-mono font-bold text-slate-900">{item.tenderNumber}</span>
-                    <Badge variant={item.fmdStatus} size="sm">
-                      {item.fmdStatus}
-                    </Badge>
+                    <div className="flex items-center gap-1 flex-wrap justify-end">
+                      <Badge variant={item.fmdStatus} size="sm">
+                        {item.fmdStatus}
+                      </Badge>
+                      {item.validityDate && item.fmdStatus !== 'Released' && item.fmdStatus !== 'Forfeited' && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          expiry.status === 'expired'
+                            ? 'bg-rose-100 text-rose-800'
+                            : expiry.status === 'expiring_soon'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {expiry.shortLabel}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <p className="font-medium text-slate-800 line-clamp-1 mb-2">
@@ -419,12 +471,28 @@ export default function FmdSdPage() {
                     {formatCurrency(selectedItem.emdAmount)}
                   </span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                  <span className="text-slate-400 block mb-0.5">Validity Expiry</span>
-                  <span className="font-semibold text-slate-800 font-mono">
-                    {formatDate(selectedItem.validityDate)}
-                  </span>
-                </div>
+                {(() => {
+                  const selectedExpiry = calculateInstrumentExpiry(selectedItem.validityDate, warningWindowDays);
+                  return (
+                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                      <span className="text-slate-400 block mb-0.5">Validity Expiry</span>
+                      <span className="font-semibold text-slate-800 font-mono block">
+                        {formatDate(selectedItem.validityDate)}
+                      </span>
+                      {selectedItem.validityDate && selectedItem.fmdStatus !== 'Released' && selectedItem.fmdStatus !== 'Forfeited' && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded inline-block mt-1 ${
+                          selectedExpiry.status === 'expired'
+                            ? 'bg-rose-100 text-rose-800'
+                            : selectedExpiry.status === 'expiring_soon'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {selectedExpiry.label}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {selectedItem.bankName && (
@@ -435,6 +503,35 @@ export default function FmdSdPage() {
                   <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100 px-2 py-0.5 rounded">
                     Verified
                   </span>
+                </div>
+              )}
+
+              {/* SD Release Clearance Gate Information */}
+              {selectedItem.fmdStatus === 'Released' && (
+                <div className="p-3 bg-emerald-50/70 rounded-lg border border-emerald-300 space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-emerald-900 font-bold">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+                    <span>SD Release Sanction & Clearance Audit Record</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-700">
+                    <div>
+                      <span className="text-slate-400 block">Sanction Order Ref:</span>
+                      <strong className="font-mono text-slate-900">{selectedItem.releaseOrderNumber || 'Recorded in Divisional Register'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Approval Date:</span>
+                      <strong>{formatDate(selectedItem.releaseApprovalDate)}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Sanctioning Officer:</span>
+                      <strong>{selectedItem.releaseApprovingAuthority || 'Executive Engineer'}</strong>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-emerald-200 text-[10px] text-emerald-800">
+                    <span>DLP Clearance: <strong>{selectedItem.dlpClearanceStatus ? 'Satisfactorily Cleared' : 'Verified'}</strong></span>
+                    {selectedItem.finalBillPassed && <span>• Final Bill Passed</span>}
+                    {selectedItem.noDuesCertificate && <span>• No Dues Certificate Attached</span>}
+                  </div>
                 </div>
               )}
             </div>

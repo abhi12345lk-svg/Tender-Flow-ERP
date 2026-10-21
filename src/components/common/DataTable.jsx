@@ -33,7 +33,7 @@ export default function DataTable({
             <tr>
               {columns.map((col, idx) => (
                 <th
-                  key={col.key || idx}
+                  key={`${col.key || 'col'}-${idx}`}
                   scope="col"
                   className={`px-3 sm:px-4 py-3 whitespace-nowrap text-[11px] sm:text-xs ${col.headerClassName || ''} ${
                     col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
@@ -75,7 +75,7 @@ export default function DataTable({
                 >
                   {columns.map((col, colIdx) => (
                     <td
-                      key={col.key || colIdx}
+                      key={`${col.key || 'col'}-${colIdx}`}
                       className={`px-3 sm:px-4 py-2.5 whitespace-nowrap text-slate-700 text-xs ${col.cellClassName || ''} ${
                         col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                       }`}

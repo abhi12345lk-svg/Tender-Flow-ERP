@@ -19,6 +19,8 @@ import {
   Receipt,
   Network,
   ShieldCheck,
+  ShieldAlert,
+  Info,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -27,6 +29,9 @@ export default function DataManagementModal({ isOpen, onClose }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [restoreAnalysis, setRestoreAnalysis] = useState(null);
+  const [pendingBackupPayload, setPendingBackupPayload] = useState(null);
+  const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   const fetchStats = async () => {
@@ -75,7 +80,7 @@ export default function DataManagementModal({ isOpen, onClose }) {
     }
   };
 
-  // Process Imported JSON
+  // Pre-flight Analysis for Imported JSON Backup
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -85,14 +90,41 @@ export default function DataManagementModal({ isOpen, onClose }) {
       const text = await file.text();
       const parsed = JSON.parse(text);
 
-      const results = await dataService.importBackupJson(parsed);
-      const totalImported = Object.values(results).reduce((a, b) => a + b, 0);
+      const analysis = await dataService.analyzeBackupJson(parsed);
+      setRestoreAnalysis(analysis);
+      setPendingBackupPayload(parsed);
 
       addToast({
-        type: 'success',
-        title: 'Backup Restored',
-        message: `Restored ${totalImported} records across all modules into IndexedDB.`,
+        type: 'info',
+        title: 'Backup Pre-Flight Analyzed',
+        message: `Inspected ${analysis.summary.totalIncoming} records (${analysis.summary.totalToAdd} new, ${analysis.summary.totalCollisions} collisions). Please review before applying.`,
       });
+    } catch (err) {
+      addToast({
+        type: 'error',
+        title: 'Backup Analysis Failed',
+        message: err.message,
+      });
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Execute restore with user-approved collision policy
+  const handleExecuteRestore = async (overwriteCollisions) => {
+    if (!pendingBackupPayload) return;
+    try {
+      setLoading(true);
+      const res = await dataService.importBackupJson(pendingBackupPayload, { overwriteCollisions });
+      addToast({
+        type: 'success',
+        title: 'Restore Completed',
+        message: `Successfully applied: ${res.added} added, ${res.updated} updated, ${res.skipped} skipped.`,
+      });
+      setRestoreAnalysis(null);
+      setPendingBackupPayload(null);
+      setOverwriteConfirmOpen(false);
 
       if (refreshLocalData) {
         await refreshLocalData();
@@ -101,12 +133,11 @@ export default function DataManagementModal({ isOpen, onClose }) {
     } catch (err) {
       addToast({
         type: 'error',
-        title: 'Import Failed',
-        message: `Invalid backup file: ${err.message}`,
+        title: 'Restore Failed (Rolled Back)',
+        message: err.message,
       });
     } finally {
       setLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -126,7 +157,7 @@ export default function DataManagementModal({ isOpen, onClose }) {
       addToast({
         type: 'info',
         title: 'Baseline Masters Restored',
-        message: 'Local IndexedDB initialized with official PWD Division 1 reference standards.',
+        message: 'Local IndexedDB initialized with project enterprise reference standards.',
       });
     } catch (err) {
       addToast({
@@ -309,6 +340,148 @@ export default function DataManagementModal({ isOpen, onClose }) {
         confirmText="Yes, Restore Masters"
         cancelText="Cancel"
         variant="warning"
+      />
+
+      {/* Pre-Flight Backup Comparison & Review Modal */}
+      {restoreAnalysis && (
+        <Modal
+          isOpen={Boolean(restoreAnalysis)}
+          onClose={() => {
+            setRestoreAnalysis(null);
+            setPendingBackupPayload(null);
+          }}
+          title="Restore Pre-Flight Comparison & Safety Review"
+          subtitle={`Inspect records from ${restoreAnalysis.app || 'Backup'} (${restoreAnalysis.format || 'JSON'}) before committing to IndexedDB.`}
+          size="lg"
+          footer={
+            <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-2.5">
+              <span className="text-xs text-slate-500">
+                Safe restore preserves existing local records via ACID rollback transaction.
+              </span>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setRestoreAnalysis(null);
+                    setPendingBackupPayload(null);
+                  }}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleExecuteRestore(false)}
+                  disabled={loading || restoreAnalysis.summary.totalToAdd === 0}
+                  icon={CheckCircle2}
+                >
+                  Add New Only ({restoreAnalysis.summary.totalToAdd})
+                </Button>
+                {restoreAnalysis.summary.totalCollisions > 0 && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setOverwriteConfirmOpen(true)}
+                    disabled={loading}
+                    icon={AlertTriangle}
+                  >
+                    Overwrite Collisions ({restoreAnalysis.summary.totalCollisions})
+                  </Button>
+                )}
+              </div>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            {/* Metric Summary Badges */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Incoming</span>
+                <span className="text-lg font-black text-slate-900">{restoreAnalysis.summary.totalIncoming}</span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/70">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 block">New Records</span>
+                <span className="text-lg font-black text-emerald-700">+{restoreAnalysis.summary.totalToAdd}</span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50/70">
+                <span className="text-[10px] uppercase font-bold text-amber-700 block">Collisions</span>
+                <span className="text-lg font-black text-amber-800">{restoreAnalysis.summary.totalCollisions}</span>
+              </div>
+              <div className="p-2.5 rounded-lg border border-slate-200 bg-white">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block">Identical</span>
+                <span className="text-lg font-black text-slate-600">{restoreAnalysis.summary.totalIdentical}</span>
+              </div>
+            </div>
+
+            {/* Collision Warning Banner */}
+            {restoreAnalysis.summary.totalCollisions > 0 && (
+              <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-950 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <h4 className="font-bold uppercase tracking-wider text-amber-900">Collision Warning Detected</h4>
+                  <p className="mt-0.5 text-amber-800 leading-relaxed">
+                    {restoreAnalysis.summary.totalCollisions} incoming record(s) share identical keys with existing local records, but have differing values. Clicking <strong>"Add New Only"</strong> will safely insert new items while leaving your existing records untouched.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Six-Module Pre-Flight Breakdown Table */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+              <div className="bg-slate-50 px-3.5 py-2 border-b border-slate-200 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Module Breakdown
+              </div>
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50/80 text-slate-500 border-b border-slate-100 font-semibold">
+                  <tr>
+                    <th className="px-3.5 py-2">Module</th>
+                    <th className="px-3 py-2 text-center">Incoming</th>
+                    <th className="px-3 py-2 text-center text-emerald-700">To Add</th>
+                    <th className="px-3 py-2 text-center text-amber-700">Collisions</th>
+                    <th className="px-3 py-2 text-center text-slate-500">Identical</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {Object.entries(restoreAnalysis.modules).map(([modKey, mod]) => (
+                    <tr key={modKey} className="hover:bg-slate-50/50">
+                      <td className="px-3.5 py-2 font-medium text-slate-800">{mod.label}</td>
+                      <td className="px-3 py-2 text-center font-bold text-slate-700">{mod.incomingCount}</td>
+                      <td className="px-3 py-2 text-center font-bold text-emerald-700">
+                        {mod.toAdd.length > 0 ? `+${mod.toAdd.length}` : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-center font-bold text-amber-700">
+                        {mod.collisions.length > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-mono">
+                            {mod.collisions.length}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center text-slate-400">
+                        {mod.identical.length > 0 ? mod.identical.length : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Explicit Overwrite Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={overwriteConfirmOpen}
+        onClose={() => setOverwriteConfirmOpen(false)}
+        onConfirm={() => handleExecuteRestore(true)}
+        title="Confirm Overwriting Colliding Records?"
+        message={`Are you sure you want to overwrite ${restoreAnalysis?.summary?.totalCollisions ?? 0} existing records in IndexedDB with values from this backup file? Existing values will be replaced.`}
+        confirmText="Yes, Overwrite Collisions"
+        cancelText="Cancel"
+        variant="danger"
       />
     </>
   );

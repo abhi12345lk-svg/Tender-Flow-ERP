@@ -1,6 +1,9 @@
 import { repositories } from './repositories/index.js';
 import { api } from './apiClient.js';
 import { syncService } from './sync/syncService.js';
+import { db } from './db/dexieDb.js';
+import { MODULE_CONFIG, computeFieldDiffs } from './sync/syncUtils.js';
+import { auditService } from './audit/auditService.js';
 
 /**
  * DataService Coordinator for TenderFlow ERP
@@ -23,41 +26,69 @@ export const dataService = {
   // Remote Server API client (Render Backend / MongoDB)
   remote: api,
 
-  // Safe Cloud Sync & Reconciliation Service
-  sync: syncService,
+  // Safe Cloud Sync & Reconciliation Service (getter avoids circular import TDZ)
+  get sync() {
+    return syncService;
+  },
 
   /**
-   * Prime IndexedDB with initial reference datasets if the local stores are empty.
+   * Prime IndexedDB with clean baseline reference datasets if the local stores are empty.
+   * Automatically clears legacy demo records (wo-01, agr-01, bill-01, fmd-01, and old PWD subdivisions).
    */
   async initLocalStorage(initialDatasets = {}) {
     try {
+      // 1. Purge legacy demo records if present in local IndexedDB
+      const demoWoIds = ['wo-01', 'wo-02', 'wo-03', 'wo-04'];
+      const existingWos = await repositories.workOrders.getAll();
+      const hasDemoWos = existingWos.some((w) => demoWoIds.includes(w.id));
+      if (hasDemoWos) {
+        await Promise.all([
+          repositories.workOrders.clear(),
+          repositories.agreements.clear(),
+          repositories.billing.clear(),
+          repositories.fmdSd.clear(),
+        ]);
+      }
+
+      // Check if subdivisions has old PWD records and reset to clean divisions
+      const existingSubs = await repositories.subdivisions.getAll();
+      const hasOldPwdSubs = existingSubs.some(
+        (s) => s.code?.startsWith('SD-CIVIL') || s.code?.startsWith('SD-ROADS') || s.inCharge?.includes('A.E.')
+      );
+      if (hasOldPwdSubs) {
+        await repositories.subdivisions.clear();
+        if (Array.isArray(initialDatasets.subdivisions) && initialDatasets.subdivisions.length > 0) {
+          await repositories.subdivisions.bulkPut(initialDatasets.subdivisions);
+        }
+      }
+
       const fyCount = await repositories.financialYears.count();
-      if (fyCount === 0 && Array.isArray(initialDatasets.financialYears)) {
+      if (fyCount === 0 && Array.isArray(initialDatasets.financialYears) && initialDatasets.financialYears.length > 0) {
         await repositories.financialYears.bulkPut(initialDatasets.financialYears);
       }
 
       const subCount = await repositories.subdivisions.count();
-      if (subCount === 0 && Array.isArray(initialDatasets.subdivisions)) {
+      if (subCount === 0 && Array.isArray(initialDatasets.subdivisions) && initialDatasets.subdivisions.length > 0) {
         await repositories.subdivisions.bulkPut(initialDatasets.subdivisions);
       }
 
       const woCount = await repositories.workOrders.count();
-      if (woCount === 0 && Array.isArray(initialDatasets.workOrders)) {
+      if (woCount === 0 && Array.isArray(initialDatasets.workOrders) && initialDatasets.workOrders.length > 0) {
         await repositories.workOrders.bulkPut(initialDatasets.workOrders);
       }
 
       const agrCount = await repositories.agreements.count();
-      if (agrCount === 0 && Array.isArray(initialDatasets.agreements)) {
+      if (agrCount === 0 && Array.isArray(initialDatasets.agreements) && initialDatasets.agreements.length > 0) {
         await repositories.agreements.bulkPut(initialDatasets.agreements);
       }
 
       const billCount = await repositories.billing.count();
-      if (billCount === 0 && Array.isArray(initialDatasets.billingList)) {
+      if (billCount === 0 && Array.isArray(initialDatasets.billingList) && initialDatasets.billingList.length > 0) {
         await repositories.billing.bulkPut(initialDatasets.billingList);
       }
 
       const fmdCount = await repositories.fmdSd.count();
-      if (fmdCount === 0 && Array.isArray(initialDatasets.fmdList)) {
+      if (fmdCount === 0 && Array.isArray(initialDatasets.fmdList) && initialDatasets.fmdList.length > 0) {
         await repositories.fmdSd.bulkPut(initialDatasets.fmdList);
       }
 
@@ -179,61 +210,263 @@ export const dataService = {
   },
 
   /**
-   * Restore/import verified JSON backup into local IndexedDB.
+   * Validate JSON backup file structure, schema version, and required fields
    */
-  async importBackupJson(backupPayload) {
+  validateBackupPayload(backupPayload) {
     if (!backupPayload || typeof backupPayload !== 'object') {
-      throw new Error('Invalid backup file format: must be a valid JSON object');
+      throw new Error('Invalid backup file: Payload must be a non-empty JSON object.');
     }
 
     const data = backupPayload.data || backupPayload;
+    if (typeof data !== 'object' || data === null) {
+      throw new Error('Invalid backup file: Missing or corrupted data payload.');
+    }
 
-    const results = {
-      financialYears: 0,
-      subdivisions: 0,
-      workOrders: 0,
-      agreements: 0,
-      billingList: 0,
-      fmdList: 0,
+    const hasModules =
+      Array.isArray(data.financialYears) ||
+      Array.isArray(data.subdivisions) ||
+      Array.isArray(data.workOrders) ||
+      Array.isArray(data.agreements) ||
+      Array.isArray(data.billingList) ||
+      Array.isArray(data.billing) ||
+      Array.isArray(data.fmdList) ||
+      Array.isArray(data.fmdSd);
+
+    if (!hasModules) {
+      throw new Error('Unrecognized backup format: No recognized government business module datasets found.');
+    }
+
+    const normalizedData = {
+      financialYears: Array.isArray(data.financialYears) ? data.financialYears : [],
+      subdivisions: Array.isArray(data.subdivisions) ? data.subdivisions : [],
+      workOrders: Array.isArray(data.workOrders) ? data.workOrders : [],
+      agreements: Array.isArray(data.agreements) ? data.agreements : [],
+      billing: Array.isArray(data.billingList)
+        ? data.billingList
+        : Array.isArray(data.billing)
+        ? data.billing
+        : [],
+      fmdSd: Array.isArray(data.fmdList)
+        ? data.fmdList
+        : Array.isArray(data.fmdSd)
+        ? data.fmdSd
+        : [],
     };
 
-    if (Array.isArray(data.financialYears) && data.financialYears.length > 0) {
-      await repositories.financialYears.bulkPut(data.financialYears);
-      results.financialYears = data.financialYears.length;
+    // Schema validation for required fields
+    for (const item of normalizedData.financialYears) {
+      if (!item.id && !item.label) throw new Error('Invalid Financial Year record: missing required label or id');
+    }
+    for (const item of normalizedData.subdivisions) {
+      if (!item.id && !item.code && !item.name) throw new Error('Invalid Subdivision record: missing required code/name or id');
+    }
+    for (const item of normalizedData.workOrders) {
+      if (!item.id && !item.workOrderNumber) throw new Error('Invalid Work Order record: missing required workOrderNumber or id');
+    }
+    for (const item of normalizedData.agreements) {
+      if (!item.id && !item.agreementNumber) throw new Error('Invalid Agreement record: missing required agreementNumber or id');
+    }
+    for (const item of normalizedData.billing) {
+      if (!item.id && !item.invoiceNumber && !item.billNumber) throw new Error('Invalid Billing record: missing required invoiceNumber or id');
+    }
+    for (const item of normalizedData.fmdSd) {
+      if (!item.id && !item.tenderNumber) throw new Error('Invalid FMD / SD record: missing required tenderNumber or id');
     }
 
-    if (Array.isArray(data.subdivisions) && data.subdivisions.length > 0) {
-      await repositories.subdivisions.bulkPut(data.subdivisions);
-      results.subdivisions = data.subdivisions.length;
+    return { isValid: true, normalizedData };
+  },
+
+  /**
+   * Restore Pre-Flight Comparison: Inspect records to add, collisions, and conflicts
+   * across all six business modules before committing any writes.
+   */
+  async analyzeBackupJson(backupPayload) {
+    const { normalizedData } = this.validateBackupPayload(backupPayload);
+    const currentLocal = await this.loadAllFromLocal();
+
+    const localLookup = {
+      financialYears: currentLocal.financialYears || [],
+      subdivisions: currentLocal.subdivisions || [],
+      workOrders: currentLocal.workOrders || [],
+      agreements: currentLocal.agreements || [],
+      billing: currentLocal.billingList || [],
+      fmdSd: currentLocal.fmdList || [],
+    };
+
+    const modulesReport = {};
+    let totalIncoming = 0;
+    let totalToAdd = 0;
+    let totalCollisions = 0;
+    let totalIdentical = 0;
+
+    const moduleKeys = ['financialYears', 'subdivisions', 'workOrders', 'agreements', 'billing', 'fmdSd'];
+
+    for (const modKey of moduleKeys) {
+      const config = MODULE_CONFIG[modKey];
+      const incomingList = normalizedData[modKey] || [];
+      const localList = localLookup[modKey] || [];
+
+      // Map local items by id and keyField
+      const localById = new Map();
+      const localByKey = new Map();
+
+      localList.forEach((item) => {
+        if (item.id) localById.set(item.id, item);
+        if (item._id) localById.set(item._id, item);
+        const keyVal = item[config.keyField];
+        if (keyVal) localByKey.set(String(keyVal).trim(), item);
+      });
+
+      const toAdd = [];
+      const collisions = [];
+      const identical = [];
+
+      for (const incomingItem of incomingList) {
+        let match = null;
+        if (incomingItem.id && localById.has(incomingItem.id)) {
+          match = localById.get(incomingItem.id);
+        } else if (incomingItem._id && localById.has(incomingItem._id)) {
+          match = localById.get(incomingItem._id);
+        } else {
+          const keyVal = incomingItem[config.keyField];
+          if (keyVal && localByKey.has(String(keyVal).trim())) {
+            match = localByKey.get(String(keyVal).trim());
+          }
+        }
+
+        if (!match) {
+          toAdd.push(incomingItem);
+        } else {
+          const diffs = computeFieldDiffs(match, incomingItem, config.compareFields);
+          if (diffs.length === 0) {
+            identical.push({ incomingItem, localItem: match });
+          } else {
+            collisions.push({
+              incomingItem,
+              localItem: match,
+              diffs,
+              key: incomingItem[config.keyField] || incomingItem.id,
+            });
+          }
+        }
+      }
+
+      totalIncoming += incomingList.length;
+      totalToAdd += toAdd.length;
+      totalCollisions += collisions.length;
+      totalIdentical += identical.length;
+
+      modulesReport[modKey] = {
+        label: config.label,
+        keyField: config.keyField,
+        incomingCount: incomingList.length,
+        toAdd,
+        collisions,
+        identical,
+      };
     }
 
-    if (Array.isArray(data.workOrders) && data.workOrders.length > 0) {
-      await repositories.workOrders.bulkPut(data.workOrders);
-      results.workOrders = data.workOrders.length;
-    }
+    return {
+      isValid: true,
+      exportDate: backupPayload.exportDate || null,
+      app: backupPayload.app || 'TenderFlow ERP',
+      format: backupPayload.format || 'JSON Backup',
+      summary: {
+        totalIncoming,
+        totalToAdd,
+        totalCollisions,
+        totalIdentical,
+      },
+      modules: modulesReport,
+      backupPayload,
+    };
+  },
 
-    if (Array.isArray(data.agreements) && data.agreements.length > 0) {
-      await repositories.agreements.bulkPut(data.agreements);
-      results.agreements = data.agreements.length;
-    }
+  /**
+   * Safe JSON restore with ACID transaction rollback, preventing accidental overwrites.
+   * If overwriteCollisions is false, only non-conflicting new records are added.
+   */
+  async importBackupJson(backupPayload, { overwriteCollisions = false } = {}) {
+    const analysis = await this.analyzeBackupJson(backupPayload);
+    const { modules } = analysis;
 
-    if (Array.isArray(data.billingList) && data.billingList.length > 0) {
-      await repositories.billing.bulkPut(data.billingList);
-      results.billingList = data.billingList.length;
-    } else if (Array.isArray(data.billing) && data.billing.length > 0) {
-      await repositories.billing.bulkPut(data.billing);
-      results.billingList = data.billing.length;
-    }
+    const moduleTableMap = {
+      financialYears: db.financialYears,
+      subdivisions: db.subdivisions,
+      workOrders: db.workOrders,
+      agreements: db.agreements,
+      billing: db.billing,
+      fmdSd: db.fmdSd,
+    };
 
-    if (Array.isArray(data.fmdList) && data.fmdList.length > 0) {
-      await repositories.fmdSd.bulkPut(data.fmdList);
-      results.fmdList = data.fmdList.length;
-    } else if (Array.isArray(data.fmdSd) && data.fmdSd.length > 0) {
-      await repositories.fmdSd.bulkPut(data.fmdSd);
-      results.fmdList = data.fmdSd.length;
-    }
+    const results = {
+      added: 0,
+      updated: 0,
+      skipped: 0,
+      details: {},
+    };
 
-    return results;
+    // Use atomic Dexie transaction across all 6 stores.
+    // If anything fails during execution, Dexie automatically rolls back all stores!
+    try {
+      await db.transaction('rw', [
+        db.financialYears,
+        db.subdivisions,
+        db.workOrders,
+        db.agreements,
+        db.billing,
+        db.fmdSd,
+      ], async () => {
+        for (const [modKey, modReport] of Object.entries(modules)) {
+          const table = moduleTableMap[modKey];
+          let modAdded = 0;
+          let modUpdated = 0;
+          let modSkipped = 0;
+
+          // 1. Safely add new records that have no local conflict
+          for (const item of modReport.toAdd) {
+            await table.put(item);
+            modAdded++;
+          }
+
+          // 2. Handle collisions according to explicit user selection
+          if (overwriteCollisions) {
+            for (const col of modReport.collisions) {
+              await table.put(col.incomingItem);
+              modUpdated++;
+            }
+            for (const iden of modReport.identical) {
+              await table.put(iden.incomingItem);
+              modUpdated++;
+            }
+          } else {
+            // Preserve all existing records untouched
+            modSkipped += modReport.collisions.length + modReport.identical.length;
+          }
+
+          results.added += modAdded;
+          results.updated += modUpdated;
+          results.skipped += modSkipped;
+          results.details[modKey] = {
+            added: modAdded,
+            updated: modUpdated,
+            skipped: modSkipped,
+          };
+        }
+      });
+
+      // Record successful restore audit log
+      await auditService.logRestore(
+        results.added + results.updated,
+        `Added: ${results.added}, Replaced: ${results.updated}, Preserved: ${results.skipped}`
+      );
+
+      return results;
+    } catch (err) {
+      // Guard against misleading success entries on failure
+      await auditService.logFailure('database', 'restore', 'RESTORE', err);
+      throw err;
+    }
   },
 
   /**

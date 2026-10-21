@@ -34,6 +34,14 @@ export default function Button({
   const sizeClass = SIZES[size] || SIZES.md;
   const isDisabled = disabled || loading;
 
+  const renderIcon = () => {
+    if (!Icon) return null;
+    if (React.isValidElement(Icon)) {
+      return Icon;
+    }
+    return <Icon className="w-4 h-4 shrink-0" />;
+  };
+
   return (
     <button
       type={type}
@@ -48,10 +56,10 @@ export default function Button({
       {loading ? (
         <Loader2 className="w-4 h-4 animate-spin text-current" />
       ) : (
-        Icon && iconPosition === 'left' && <Icon className="w-4 h-4 shrink-0" />
+        iconPosition === 'left' && renderIcon()
       )}
       <span>{children}</span>
-      {!loading && Icon && iconPosition === 'right' && <Icon className="w-4 h-4 shrink-0" />}
+      {!loading && iconPosition === 'right' && renderIcon()}
     </button>
   );
 }

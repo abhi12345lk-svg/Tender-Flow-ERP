@@ -4,6 +4,7 @@ import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { generateAgreementDocx } from '../../services/export';
+import { printElement } from '../../utils/printHelper';
 
 export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement, workOrder }) {
   const [exportingWord, setExportingWord] = useState(false);
@@ -11,7 +12,9 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
   if (!agreement) return null;
 
   const handlePrint = () => {
-    window.print();
+    printElement('printable-document', {
+      title: `Agreement_${agreement.agreementNumber?.replace(/[\/\\]/g, '_') || 'Contract'}`,
+    });
   };
 
   const handleDownloadDoc = async () => {
@@ -20,7 +23,9 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
       await generateAgreementDocx(agreement);
     } catch (err) {
       console.warn('Word export error:', err.message);
-      window.print();
+      printElement('printable-document', {
+        title: `Agreement_${agreement.agreementNumber?.replace(/[\/\\]/g, '_') || 'Contract'}`,
+      });
     } finally {
       setExportingWord(false);
     }
@@ -37,7 +42,7 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
           <div className="text-xs text-slate-500 flex items-center justify-center sm:justify-start gap-1.5">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Official Government PWD Standard Agreement Format</span>
+            <span>Standard Contract Agreement Format</span>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
@@ -75,16 +80,16 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
           id="printable-document"
           className="bg-white p-4 sm:p-8 border border-slate-300 rounded-lg shadow-sm font-serif text-slate-900 space-y-4 sm:space-y-6 max-w-3xl mx-auto leading-relaxed"
         >
-          {/* Official Emblem & Header */}
+          {/* Official Enterprise Header */}
           <div className="text-center border-b-2 border-slate-900 pb-4">
             <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-slate-700">
-              GOVERNMENT OF INDIA / STATE PUBLIC WORKS DEPARTMENT
+              CONTRACT & INFRASTRUCTURE PROJECT MANAGEMENT ENTERPRISE
             </h2>
             <h3 className="text-sm sm:text-base font-extrabold uppercase mt-1">
-              OFFICE OF THE EXECUTIVE ENGINEER, DIVISION NO. 1
+              PROJECT OPERATIONS & CONTRACT ADMINISTRATION
             </h3>
             <p className="text-xs text-slate-600 mt-0.5">
-              Form of Contract & Legal Articles of Agreement
+              Articles of Agreement & Legal Contract Terms
             </p>
           </div>
 
@@ -103,7 +108,7 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
               <span className="font-bold font-mono text-slate-900">{agreement.workOrderNumber}</span>
             </div>
             <div>
-              <span className="font-semibold text-slate-600 block">Tender Number (M):</span>
+              <span className="font-semibold text-slate-600 block">Tender Number:</span>
               <span className="font-bold font-mono text-slate-900">{agreement.tenderNumber}</span>
             </div>
             <div>
@@ -120,11 +125,11 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
 
           {/* Agreement Body Content */}
           <div className="text-xs space-y-3 text-justify leading-relaxed whitespace-pre-line text-slate-800">
-            {agreement.content || `MEMORANDUM OF AGREEMENT executed on ${formatDate(agreement.agreementDate)} between the Executive Engineer, Public Works Department for and on behalf of the Governor (First Party) and ${agreement.contractorName} (Second Party/Contractor).
+            {agreement.content || `MEMORANDUM OF AGREEMENT executed on ${formatDate(agreement.agreementDate)} between TenderFlow ERP Infrastructure Operations (First Party) and ${agreement.contractorName} (Second Party/Contractor).
 
 1. SCOPE OF WORK: The Contractor undertakes to execute, complete and maintain in conformity with the provisions of this contract all works described in Work Order No. ${agreement.workOrderNumber}.
-2. LIQUIDATED DAMAGES & RETENTION: The Security Deposit and retention amount shall be regulated according to standard PWD General Conditions of Contract (GCC).
-3. DISPUTE RESOLUTION: Any dispute or difference arising out of or in connection with this agreement shall be settled through arbitration under the Indian Arbitration and Conciliation Act.`}
+2. LIQUIDATED DAMAGES & RETENTION: The Security Deposit and retention amount shall be regulated according to standard General Conditions of Contract (GCC).
+3. DISPUTE RESOLUTION: Any dispute or difference arising out of or in connection with this agreement shall be settled through mutual agreement or arbitration under the Indian Arbitration and Conciliation Act.`}
           </div>
 
           {/* Signatures & Execution Section */}
@@ -139,11 +144,11 @@ export default function AgreementPrintPreviewModal({ isOpen, onClose, agreement,
             </div>
 
             <div className="text-left sm:text-right space-y-8 sm:space-y-12 flex flex-col sm:items-end">
-              <p className="text-slate-500">For and on behalf of the Governor:</p>
+              <p className="text-slate-500">For and on behalf of the Organization:</p>
               <div>
                 <div className="border-t border-slate-400 w-44 sm:w-48 mb-1 sm:ml-auto"></div>
-                <p className="font-bold text-slate-900">Executive Engineer</p>
-                <p className="text-slate-500 text-[11px]">Public Works Division No. 1</p>
+                <p className="font-bold text-slate-900">Operations Director / Project Head</p>
+                <p className="text-slate-500 text-[11px]">Contract & Execution Division</p>
               </div>
             </div>
           </div>

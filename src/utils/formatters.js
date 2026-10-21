@@ -33,17 +33,25 @@ export const formatDate = (dateString) => {
   }
 };
 
+import {
+  calculateBillingBreakdown,
+  DEFAULT_BILLING_RATES,
+  roundToTwo,
+} from '../services/billing/billingCalculationConfig.js';
+
+export { calculateBillingBreakdown, DEFAULT_BILLING_RATES };
+
 /**
  * Calculate GST and Total
  * defaultRate is percentage (e.g. 18 for 18%)
  */
-export const calculateGST = (amount, rate = 18) => {
+export const calculateGST = (amount, rate = DEFAULT_BILLING_RATES.gst.defaultRate) => {
   const base = parseFloat(amount) || 0;
   const gstRate = parseFloat(rate) || 0;
-  const gstAmount = (base * gstRate) / 100;
-  const cgst = gstAmount / 2;
-  const sgst = gstAmount / 2;
-  const total = base + gstAmount;
+  const gstAmount = roundToTwo((base * gstRate) / 100);
+  const cgst = roundToTwo(gstAmount / 2);
+  const sgst = roundToTwo(gstAmount / 2);
+  const total = roundToTwo(base + gstAmount);
 
   return {
     baseAmount: base,
@@ -65,9 +73,10 @@ export const calculateNetBilling = (totalAmount, deductions = {}) => {
   const labourCess = parseFloat(deductions.labourCess) || 0;
   const royalty = parseFloat(deductions.royalty) || 0;
   const penalty = parseFloat(deductions.penalty) || 0;
+  const gstTds = parseFloat(deductions.gstTdsAmount) || 0;
 
-  const totalDeductions = sd + tds + labourCess + royalty + penalty;
-  const netPayable = Math.max(0, total - totalDeductions);
+  const totalDeductions = roundToTwo(sd + tds + labourCess + royalty + penalty + gstTds);
+  const netPayable = roundToTwo(Math.max(0, total - totalDeductions));
 
   return {
     totalAmount: total,

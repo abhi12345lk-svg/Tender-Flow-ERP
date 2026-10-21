@@ -56,3 +56,4 @@ const startServer = async () => {
 };
 
 startServer();
+// Server entrypoint ready

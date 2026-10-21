@@ -46,7 +46,7 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
     } else {
       const defaultWo = workOrders[0];
       setFormData({
-        agreementNumber: `AGR/PWD/2024/${Math.floor(100 + Math.random() * 900)}`,
+        agreementNumber: `AGR/${new Date().getFullYear()}/${Math.floor(100 + Math.random() * 900)}`,
         workOrderId: defaultWo?.id || '',
         workOrderNumber: defaultWo?.workOrderNumber || '',
         tenderNumber: defaultWo?.tenderNumber || '',
@@ -160,7 +160,7 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
                 <span className="text-slate-900">{formData.contractorName}</span>
               </div>
               <div>
-                <span className="font-semibold text-slate-700">Tender Number (M): </span>
+                <span className="font-semibold text-slate-700">Tender Number: </span>
                 <span className="font-mono text-slate-900">{formData.tenderNumber}</span>
               </div>
             </div>
@@ -185,7 +185,7 @@ export default function AgreementModal({ isOpen, onClose, onSave, editingAgreeme
             value={formData.templateType}
             onChange={(e) => setFormData({ ...formData, templateType: e.target.value })}
             options={[
-              { value: 'Standard PWD Contract Form F-2 (Lump Sum)', label: 'Standard PWD Form F-2 (Lump Sum)' },
+              { value: 'Standard PWD Contract Form F-2 (Lump Sum)', label: 'Standard Contract Form F-2 (Lump Sum)' },
               { value: 'Item Rate Agreement Form B-1', label: 'Item Rate Agreement Form B-1' },
               { value: 'EPC Turnkey Contract Template', label: 'EPC Turnkey Contract Template' },
               { value: 'Minor Repair & Maintenance Agreement', label: 'Minor Maintenance Agreement' },

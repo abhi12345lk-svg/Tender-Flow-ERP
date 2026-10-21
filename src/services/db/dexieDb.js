@@ -19,7 +19,7 @@ export class TenderFlowDatabase extends Dexie {
       // 3. Agreement
       agreements: '&id, agreementNumber, workOrderId, tenderNumber, status, language, createdAt',
 
-      // 4. Billing
+      // 4. Billing (Baseline v1)
       billing: '&id, billNumber, workOrderId, financialYear, billDate, paymentStatus, createdAt',
 
       // 5. Subdivision
@@ -33,6 +33,20 @@ export class TenderFlowDatabase extends Dexie {
 
       // Sync audit trail (foundation for future explicit consent-based synchronization)
       syncLog: '++id, entity, entityId, operation, status, timestamp',
+    });
+
+    // Version 2 Upgrade: Corrects billing indexes to align with official invoiceNumber, invoiceDate, status
+    this.version(2).stores({
+      billing: '&id, invoiceNumber, billNumber, workOrderId, financialYear, invoiceDate, billDate, status, paymentStatus, totalAmount, netPayable, createdAt',
+    }).upgrade((tx) => {
+      // Safe, non-destructive migration callback to normalize existing records in-place
+      return tx.table('billing').toCollection().modify((bill) => {
+        if (!bill.invoiceNumber && bill.billNumber) bill.invoiceNumber = bill.billNumber;
+        if (!bill.invoiceDate && bill.billDate) bill.invoiceDate = bill.billDate;
+        if (!bill.status && bill.paymentStatus) bill.status = bill.paymentStatus;
+        if (bill.totalAmount === undefined && bill.amount !== undefined) bill.totalAmount = bill.amount;
+        if (bill.netPayable === undefined && bill.netPayableAmount !== undefined) bill.netPayable = bill.netPayableAmount;
+      });
     });
   }
 }

@@ -100,9 +100,9 @@ export default function SubdivisionsPage() {
     },
     {
       header: 'Associated Work Orders',
-      key: 'id',
-      render: (subId) => {
-        const count = workOrders.filter((w) => w.subdivisionId === subId).length;
+      key: 'associatedWorkOrders',
+      render: (_, row) => {
+        const count = workOrders.filter((w) => w.subdivisionId === row.id).length;
         return (
           <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 text-xs">
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600" />
@@ -113,9 +113,9 @@ export default function SubdivisionsPage() {
     },
     {
       header: 'Associated Billing Records',
-      key: 'id',
-      render: (subId) => {
-        const count = billingList.filter((b) => b.subdivisionId === subId).length;
+      key: 'associatedBilling',
+      render: (_, row) => {
+        const count = billingList.filter((b) => b.subdivisionId === row.id).length;
         return (
           <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 text-xs">
             <Receipt className="h-3.5 w-3.5 text-emerald-600" />

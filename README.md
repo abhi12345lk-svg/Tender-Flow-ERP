@@ -43,8 +43,8 @@ React 18 UI (Vite + Tailwind CSS + Lucide)
 
 2. **Work Order (`/api/v1/work-orders`)**
    - Preserves handwritten specifications and unconfirmed labels:
-     - `Tender Number (M)` *(mandatory)*
-     - `Work Order Number (M)` *(mandatory, unique index)*
+     - `Tender Number` *(mandatory)*
+     - `Work Order Number` *(mandatory, unique index)*
      - `Work Order Date`
      - `TD` *(preserved label)*
      - `EMD Number` & `EMD Amount`
@@ -211,7 +211,7 @@ Seeds initial administrator credentials and default government records if the da
 |---|---|---|
 | `GET` | `/api/v1/work-orders` | List work orders (supports `search`, `status`, `financialYear`, `subdivision`, `page`, `limit`) |
 | `GET` | `/api/v1/work-orders/:id` | Get work order details including related agreements, billing vouchers & FMD records |
-| `POST` | `/api/v1/work-orders` | Create work order (validates mandatory `(M)` fields, numeric amounts) |
+| `POST` | `/api/v1/work-orders` | Create work order (validates mandatory fields, numeric amounts) |
 | `PATCH` | `/api/v1/work-orders/:id` | Update work order |
 | `DELETE` | `/api/v1/work-orders/:id` | Delete work order (blocked if associated billing records or agreements exist) |
 
@@ -261,7 +261,7 @@ Seeds initial administrator credentials and default government records if the da
 
 ## 📋 Business Assumptions & Rule Confirmations
 1. **Meaning of TD**: Preserved as literal string `TD` in database models and UI forms without inventing an unconfirmed acronym.
-2. **Mandatory Marker `(M)`**: Preserved for Tender Number and Work Order Number.
+2. **Mandatory Fields**: Cleaned of legacy `(M)` markers for Tender Number and Work Order Number to maintain commercial ERP UI standards.
 3. **GST Calculation**: Kept configurable (defaulting to 18%: 9% CGST + 9% SGST) with transparent base amount display.
 4. **FMD Scope**: Preserved strictly as `FMD` without fabricating an unconfirmed definition.
 5. **Storage**: Real disk custody storage with MIME filtering and size constraints implemented via `multer`. Cloud storage adapter pattern ready for production deployment.

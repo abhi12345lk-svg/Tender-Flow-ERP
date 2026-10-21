@@ -4,6 +4,7 @@ import Button from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { Printer, Languages, ShieldCheck, FileText, AlertCircle, Download, Loader2 } from 'lucide-react';
 import { generateFmdCustodyDocx } from '../../services/export';
+import { printElement } from '../../utils/printHelper';
 
 export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
   const [language, setLanguage] = useState('en'); // 'en' or 'hi'
@@ -13,7 +14,9 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
   if (!fmdItem) return null;
 
   const handlePrint = () => {
-    window.print();
+    printElement('printable-document', {
+      title: `FMD_SD_Certificate_${fmdItem.tenderNumber?.replace(/[\/\\]/g, '_') || 'Security'}`,
+    });
   };
 
   const isHindi = language === 'hi';
@@ -25,7 +28,9 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
       await generateFmdCustodyDocx(fmdItem, lang, editableNotes);
     } catch (err) {
       console.warn('Word certificate generation failed, fallback to print:', err.message);
-      window.print();
+      printElement('printable-document', {
+        title: `FMD_SD_Certificate_${fmdItem.tenderNumber?.replace(/[\/\\]/g, '_') || 'Security'}`,
+      });
     } finally {
       setExportingWord(false);
     }
@@ -112,8 +117,8 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
           <div className="text-center border-b-2 border-slate-900 pb-4">
             <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-slate-700">
               {isHindi
-                ? 'लोक निर्माण विभाग (भवन एवं मार्ग)'
-                : 'PUBLIC WORKS DEPARTMENT (GOVERNMENT OF STATE)'}
+                ? 'अनुबंध एवं निर्माण प्रबंधन प्रणाली'
+                : 'CONTRACT & PROJECT MANAGEMENT ENTERPRISE'}
             </h2>
             <h3 className="text-sm sm:text-base font-extrabold uppercase mt-1">
               {isHindi
@@ -122,8 +127,8 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
             </h3>
             <p className="text-xs text-slate-600 mt-0.5">
               {isHindi
-                ? 'कार्यालय कार्यपालक अभियंता, खंड-1 | प्रपत्र संख्या: PWD/FMD-SD/2024'
-                : 'Office of the Executive Engineer, Division No. 1 | Form Ref: PWD/FMD-SD/2024'}
+                ? 'प्रबंधन एवं वित्त प्रभाग | प्रपत्र संख्या: TF-SD/2024'
+                : 'Finance & Contracts Division | Document Ref: TF-SD/2024'}
             </p>
           </div>
 
@@ -131,7 +136,7 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 text-xs border p-3 rounded bg-slate-50 font-sans gap-2">
             <div>
               <span className="font-semibold text-slate-600 block">
-                {isHindi ? 'निविदा संख्या (Tender No):' : 'Tender Number (M):'}
+                {isHindi ? 'निविदा संख्या (Tender No):' : 'Tender Number:'}
               </span>
               <span className="font-bold font-mono text-slate-900">{fmdItem.tenderNumber}</span>
             </div>
@@ -214,10 +219,10 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
                 </p>
                 <p>
                   2. The instrument bearing reference <strong>{fmdItem.instrumentReference || 'BG/FDR'}</strong> issued by 
-                  {fmdItem.bankName || 'Scheduled Commercial Bank'} has been verified through independent bank confirmation in accordance with PWD Financial Rules.
+                  {fmdItem.bankName || 'Scheduled Commercial Bank'} has been verified through independent bank confirmation in accordance with Commercial Financial Rules.
                 </p>
                 <p>
-                  3. The aforementioned SD / FMD shall remain pledged and valid through the contract duration and defect liability period, and shall only be released upon formal sanction by the Executive Engineer.
+                  3. The aforementioned SD / FMD shall remain pledged and valid through the contract duration and defect liability period, and shall only be released upon formal sanction by the Project Director / Authorised Authority.
                 </p>
               </>
             )}
@@ -248,14 +253,14 @@ export default function FmdSdPrintModal({ isOpen, onClose, fmdItem }) {
           <div className="pt-6 sm:pt-8 border-t border-slate-300 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 text-xs font-sans">
             <div>
               <div className="border-t border-slate-400 w-44 mb-1"></div>
-              <p className="font-bold text-slate-900">{isHindi ? 'प्रभागीय लेखाकार (DA)' : 'Divisional Accountant'}</p>
-              <p className="text-slate-500 text-[11px]">{isHindi ? 'लेखा शाखा, खंड-1' : 'Accounts Branch, Division 1'}</p>
+              <p className="font-bold text-slate-900">{isHindi ? 'वित्त एवं लेखा अधिकारी' : 'Finance & Accounts Manager'}</p>
+              <p className="text-slate-500 text-[11px]">{isHindi ? 'लेखा एवं अनुबंध प्रभाग' : 'Accounts & Contracts Branch'}</p>
             </div>
 
             <div className="text-left sm:text-right flex flex-col sm:items-end">
               <div className="border-t border-slate-400 w-44 mb-1 sm:ml-auto"></div>
-              <p className="font-bold text-slate-900">{isHindi ? 'कार्यपालक अभियंता' : 'Executive Engineer'}</p>
-              <p className="text-slate-500 text-[11px]">{isHindi ? 'लोक निर्माण विभाग' : 'Public Works Department'}</p>
+              <p className="font-bold text-slate-900">{isHindi ? 'परियोजना निदेशक / अधिकृत अधिकारी' : 'Project Director / Operations Manager'}</p>
+              <p className="text-slate-500 text-[11px]">{isHindi ? 'अनुबंध एवं निर्माण प्रबंधन' : 'Contract & Project Management'}</p>
             </div>
           </div>
         </div>

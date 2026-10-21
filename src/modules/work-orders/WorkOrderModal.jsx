@@ -84,12 +84,12 @@ export default function WorkOrderModal({ isOpen, onClose, onSave, editingWorkOrd
 
   const validate = () => {
     const errs = {};
-    // Required fields marked (M)
+    // Required core fields
     if (!formData.tenderNumber.trim()) {
-      errs.tenderNumber = 'Tender Number (M) is mandatory';
+      errs.tenderNumber = 'Tender Number is required';
     }
     if (!formData.workOrderNumber.trim()) {
-      errs.workOrderNumber = 'Work Order Number (M) is mandatory';
+      errs.workOrderNumber = 'Work Order Number is required';
     }
 
     if (!formData.workOrderDate) {
@@ -124,7 +124,7 @@ export default function WorkOrderModal({ isOpen, onClose, onSave, editingWorkOrd
       isOpen={isOpen}
       onClose={onClose}
       title={editingWorkOrder ? 'Edit Work Order' : 'Create Work Order'}
-      subtitle="Preserving government tender and departmental accounting specifications"
+      subtitle="Manage contract details, project scope, budget amounts, and execution schedule"
       size="xl"
       footer={
         <>
@@ -138,28 +138,26 @@ export default function WorkOrderModal({ isOpen, onClose, onSave, editingWorkOrd
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-        {/* Core Government Identifiers */}
+        {/* Core Identifiers */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           <Input
-            label="Tender Number (M)"
+            label="Tender Number"
             name="tenderNumber"
-            placeholder="e.g. TN-PWD-2024-892"
+            placeholder="e.g. TN-2024-892"
             value={formData.tenderNumber}
             onChange={(e) => setFormData({ ...formData, tenderNumber: e.target.value })}
             required
             error={errors.tenderNumber}
-            helperText="Preserved field label: Tender Number (M)"
           />
 
           <Input
-            label="Work Order Number (M)"
+            label="Work Order Number"
             name="workOrderNumber"
             placeholder="e.g. WO-2024-00142"
             value={formData.workOrderNumber}
             onChange={(e) => setFormData({ ...formData, workOrderNumber: e.target.value })}
             required
             error={errors.workOrderNumber}
-            helperText="Preserved field label: Work Order Number (M)"
           />
         </div>
 

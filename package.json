@@ -5,12 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "client": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "server": "node --watch server/src/server.js",
     "server:start": "node server/src/server.js",
     "server:test": "npm --prefix server test",
     "server:seed": "npm --prefix server run seed",
+    "test": "node scripts/test-phase1-fixes.js && node scripts/test-phase2-features.js && node scripts/test-safe-sync.js && node scripts/test-offline-exports.js && npm run server:test",
+    "test:phase1": "node scripts/test-phase1-fixes.js",
+    "test:phase2": "node scripts/test-phase2-features.js",
     "audit": "node scripts/audit-production.js"
   },
   "dependencies": {

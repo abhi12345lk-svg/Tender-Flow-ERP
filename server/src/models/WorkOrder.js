@@ -4,13 +4,13 @@ const workOrderSchema = new mongoose.Schema(
   {
     tenderNumber: {
       type: String,
-      required: [true, 'Tender Number (M) is required'],
+      required: [true, 'Tender Number is required'],
       trim: true,
       index: true,
     },
     workOrderNumber: {
       type: String,
-      required: [true, 'Work Order Number (M) is required'],
+      required: [true, 'Work Order Number is required'],
       unique: true,
       trim: true,
       index: true,

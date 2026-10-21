@@ -16,6 +16,7 @@ import { generateId } from '../../utils/formatters.js';
  * 4. Explicit conflict detection and side-by-side resolution UI.
  * 5. Idempotent uploads and downloads with per-record sync status.
  * 6. Attachment isolation: Documents are never uploaded without explicit consent.
+ * 7. Parent-first sync ordering and foreign key to ObjectId translation.
  */
 
 import {
@@ -32,6 +33,11 @@ export {
   computeFieldDiffs,
 };
 
+/**
+ * Validates 24-character hexadecimal MongoDB ObjectId string
+ */
+export const isValidObjectId = (id) => typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id);
+
 class SyncService {
   constructor() {
     this.latestBackupToken = null;
@@ -41,20 +47,50 @@ class SyncService {
    * Health and connectivity check
    */
   async checkBackendHealth() {
+    const rawUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:5000/api/v1';
+    const cleanUrl = rawUrl.replace(/\/+$/, '');
     try {
       const health = await api.health.check();
       const isHealthy = health?.status === 'healthy';
       return {
         isConnected: isHealthy,
         health,
-        url: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1',
+        url: cleanUrl,
       };
     } catch (err) {
       return {
         isConnected: false,
         error: err.message,
-        url: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1',
+        url: cleanUrl,
       };
+    }
+  }
+
+  /**
+   * Retrieve persistent local-to-remote ID map from IndexedDB appSettings
+   */
+  async getPersistentIdMap() {
+    try {
+      const setting = await db.appSettings.get('sync_id_map');
+      return setting?.mapping && typeof setting.mapping === 'object' ? { ...setting.mapping } : {};
+    } catch (err) {
+      console.warn('[SyncService] Failed to read persistent ID map:', err.message);
+      return {};
+    }
+  }
+
+  /**
+   * Store persistent local-to-remote ID map in IndexedDB appSettings
+   */
+  async savePersistentIdMap(mapping) {
+    try {
+      await db.appSettings.put({
+        key: 'sync_id_map',
+        mapping,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('[SyncService] Failed to save persistent ID map:', err.message);
     }
   }
 
@@ -90,6 +126,7 @@ class SyncService {
     if (!healthStatus.isConnected) {
       return {
         canSync: false,
+        isUnauthorized: false,
         reason: 'Backend is offline or unreachable. Local records cannot be synchronized.',
         healthStatus,
         modules: {},
@@ -116,6 +153,7 @@ class SyncService {
       api.fmdSd.getAll(),
     ]);
 
+    // Parent-first module ordering
     const moduleKeys = ['financialYears', 'subdivisions', 'workOrders', 'agreements', 'billing', 'fmdSd'];
     const remoteData = {};
 
@@ -125,12 +163,20 @@ class SyncService {
       if (res.status === 'fulfilled' && Array.isArray(res.value?.data)) {
         remoteData[key] = res.value.data.map(normalizeRemoteDoc);
       } else {
-        // If an endpoint fails, report safely rather than making assumptions
+        const isAuthError =
+          res.reason?.status === 401 ||
+          res.reason?.message?.includes('401') ||
+          res.reason?.message?.toLowerCase().includes('unauthorized') ||
+          res.reason?.message?.toLowerCase().includes('token');
+
         return {
           canSync: false,
-          reason: `Failed to safely retrieve remote records for ${MODULE_CONFIG[key].label}: ${
-            res.reason?.message || 'Endpoint error'
-          }`,
+          isUnauthorized: isAuthError,
+          reason: isAuthError
+            ? 'Officer Authentication Required: Server requires official authentication credentials to access cloud records.'
+            : `Failed to safely retrieve remote records for ${MODULE_CONFIG[key].label}: ${
+                res.reason?.message || 'Endpoint error'
+              }`,
           healthStatus,
           modules: {},
           summary: {
@@ -144,7 +190,10 @@ class SyncService {
       }
     }
 
-    // 4. Compare local and remote datasets for each module
+    // 4. Update in-memory ID map with all matched remote IDs
+    const idMap = await this.getPersistentIdMap();
+
+    // 5. Compare local and remote datasets for each module
     const modulesReport = {};
     let totalPendingUpload = 0;
     let totalPendingDownload = 0;
@@ -188,6 +237,17 @@ class SyncService {
           const keyVal = localItem[config.keyField];
           if (keyVal && remoteByKey.has(String(keyVal).trim())) {
             remoteMatch = remoteByKey.get(String(keyVal).trim());
+          }
+        }
+
+        if (remoteMatch) {
+          // Record remote ID mapping
+          if (localItem.id && remoteMatch._id) {
+            idMap[localItem.id] = remoteMatch._id;
+          }
+          const keyVal = localItem[config.keyField];
+          if (keyVal && remoteMatch._id) {
+            idMap[String(keyVal).trim()] = remoteMatch._id;
           }
         }
 
@@ -261,8 +321,12 @@ class SyncService {
       };
     }
 
+    // Persist discovered ID mappings
+    await this.savePersistentIdMap(idMap);
+
     return {
       canSync: true,
+      isUnauthorized: false,
       healthStatus,
       modules: modulesReport,
       summary: {
@@ -294,8 +358,109 @@ class SyncService {
   }
 
   /**
+   * Helper to translate local entity fields and foreign keys into MongoDB-compatible payload.
+   * Handles parent-to-child foreign key mappings cleanly without sending invalid string IDs into ObjectIds.
+   */
+  preparePayloadForUpload(modKey, rawItem, idMap) {
+    const payload = { ...rawItem };
+    delete payload._syncStatus;
+    delete payload._lastModified;
+    delete payload._conflictDetails;
+
+    if (modKey === 'workOrders') {
+      // Map subdivisionId -> subdivision (ObjectId)
+      if (payload.subdivisionId) {
+        if (isValidObjectId(payload.subdivisionId)) {
+          payload.subdivision = payload.subdivisionId;
+        } else if (idMap[payload.subdivisionId] && isValidObjectId(idMap[payload.subdivisionId])) {
+          payload.subdivision = idMap[payload.subdivisionId];
+        } else {
+          payload.subdivision = null;
+        }
+        delete payload.subdivisionId;
+      } else if (!isValidObjectId(payload.subdivision)) {
+        payload.subdivision = null;
+      }
+    } else if (modKey === 'agreements') {
+      // Map workOrderId -> workOrder (ObjectId, Required)
+      let resolvedWoId = null;
+      if (isValidObjectId(payload.workOrderId)) {
+        resolvedWoId = payload.workOrderId;
+      } else if (payload.workOrderId && idMap[payload.workOrderId] && isValidObjectId(idMap[payload.workOrderId])) {
+        resolvedWoId = idMap[payload.workOrderId];
+      } else if (payload.workOrderNumber && idMap[payload.workOrderNumber] && isValidObjectId(idMap[payload.workOrderNumber])) {
+        resolvedWoId = idMap[payload.workOrderNumber];
+      } else if (isValidObjectId(payload.workOrder)) {
+        resolvedWoId = payload.workOrder;
+      }
+
+      delete payload.workOrderId;
+      payload.workOrder = resolvedWoId;
+    } else if (modKey === 'billing') {
+      // Map workOrderId -> workOrder (ObjectId, Required)
+      let resolvedWoId = null;
+      if (isValidObjectId(payload.workOrderId)) {
+        resolvedWoId = payload.workOrderId;
+      } else if (payload.workOrderId && idMap[payload.workOrderId] && isValidObjectId(idMap[payload.workOrderId])) {
+        resolvedWoId = idMap[payload.workOrderId];
+      } else if (payload.workOrderNumber && idMap[payload.workOrderNumber] && isValidObjectId(idMap[payload.workOrderNumber])) {
+        resolvedWoId = idMap[payload.workOrderNumber];
+      } else if (isValidObjectId(payload.workOrder)) {
+        resolvedWoId = payload.workOrder;
+      }
+
+      delete payload.workOrderId;
+      payload.workOrder = resolvedWoId;
+
+      // Map subdivisionId -> subdivision (ObjectId, Optional)
+      if (payload.subdivisionId) {
+        if (isValidObjectId(payload.subdivisionId)) {
+          payload.subdivision = payload.subdivisionId;
+        } else if (idMap[payload.subdivisionId] && isValidObjectId(idMap[payload.subdivisionId])) {
+          payload.subdivision = idMap[payload.subdivisionId];
+        } else {
+          payload.subdivision = null;
+        }
+        delete payload.subdivisionId;
+      } else if (!isValidObjectId(payload.subdivision)) {
+        payload.subdivision = null;
+      }
+
+      // Field normalization
+      payload.invoiceNumber = payload.invoiceNumber || payload.billNumber;
+      payload.invoiceDate = payload.invoiceDate || payload.billDate;
+      payload.amount = Number(payload.amount ?? payload.totalAmount ?? 0);
+      payload.totalAmount = Number(payload.totalAmount ?? payload.amount ?? 0);
+    } else if (modKey === 'fmdSd') {
+      // Map workOrderId -> workOrder (ObjectId, Optional)
+      let resolvedWoId = null;
+      if (isValidObjectId(payload.workOrderId)) {
+        resolvedWoId = payload.workOrderId;
+      } else if (payload.workOrderId && idMap[payload.workOrderId] && isValidObjectId(idMap[payload.workOrderId])) {
+        resolvedWoId = idMap[payload.workOrderId];
+      } else if (payload.workOrderNumber && idMap[payload.workOrderNumber] && isValidObjectId(idMap[payload.workOrderNumber])) {
+        resolvedWoId = idMap[payload.workOrderNumber];
+      } else if (isValidObjectId(payload.workOrder)) {
+        resolvedWoId = payload.workOrder;
+      }
+
+      delete payload.workOrderId;
+      payload.workOrder = resolvedWoId;
+
+      // Ensure required tenderTitle
+      payload.tenderTitle =
+        payload.tenderTitle ||
+        payload.title ||
+        payload.workOrderNumber ||
+        `Custody for Tender ${payload.tenderNumber || 'N/A'}`;
+    }
+
+    return payload;
+  }
+
+  /**
    * Execute Reviewed Synchronization (Idempotent & Safe).
-   * Requires verified backup before proceeding.
+   * Enforces strict parent-first order, foreign key translation, and verified backup gate.
    */
   async executeReviewedSync(diffReport, conflictResolutions = {}, options = { uploadAttachments: false }) {
     if (!diffReport || !diffReport.canSync) {
@@ -314,10 +479,34 @@ class SyncService {
       errors: [],
     };
 
-    const moduleKeys = Object.keys(diffReport.modules);
+    // Load persistent ID mapping
+    const idMap = await this.getPersistentIdMap();
 
-    for (const modKey of moduleKeys) {
-      const modReport = diffReport.modules[modKey];
+    // Populate existing local entity ObjectIds into mapping
+    const localData = await dataService.loadAllFromLocal();
+    Object.values(localData).forEach((list) => {
+      if (Array.isArray(list)) {
+        list.forEach((item) => {
+          if (item?.id && item?._id && isValidObjectId(item._id)) {
+            idMap[item.id] = item._id;
+          }
+        });
+      }
+    });
+
+    // Enforce strict parent-first module sequence:
+    // 1. Financial Years (parent)
+    // 2. Subdivisions (parent)
+    // 3. Work Orders (parent of agreements, bills, fmd; child of subdivisions)
+    // 4. Agreements (child of work orders)
+    // 5. Billing (child of work orders & subdivisions)
+    // 6. FMD / SD (optional child of work orders)
+    const parentFirstSequence = ['financialYears', 'subdivisions', 'workOrders', 'agreements', 'billing', 'fmdSd'];
+
+    for (const modKey of parentFirstSequence) {
+      const modReport = diffReport.modules?.[modKey];
+      if (!modReport) continue;
+
       const config = MODULE_CONFIG[modKey];
       const apiRef = api[config.apiRef];
       const repoRef = dataService.local[config.repoRef];
@@ -325,10 +514,28 @@ class SyncService {
       // 1. Process Pending Uploads (Local -> Cloud)
       for (const item of modReport.pendingUploads) {
         try {
-          const payload = { ...item.item };
-          delete payload._syncStatus;
-          delete payload._lastModified;
-          delete payload._conflictDetails;
+          const payload = this.preparePayloadForUpload(modKey, item.item, idMap);
+
+          // Verify parent foreign key requirements before sending to MongoDB
+          if (modKey === 'agreements' && !payload.workOrder) {
+            results.skipped++;
+            const skipMsg = `Skipped Agreement [${item.key}]: Parent Work Order '${
+              item.item.workOrderNumber || item.item.workOrderId || 'N/A'
+            }' not found on cloud. Synchronize Work Orders first.`;
+            results.errors.push(skipMsg);
+            await this.logSyncAction(modKey, item.id, 'upload_skipped', 'missing_parent', skipMsg);
+            continue;
+          }
+
+          if (modKey === 'billing' && !payload.workOrder) {
+            results.skipped++;
+            const skipMsg = `Skipped Bill [${item.key}]: Parent Work Order '${
+              item.item.workOrderNumber || item.item.workOrderId || 'N/A'
+            }' not found on cloud. Synchronize Work Orders first.`;
+            results.errors.push(skipMsg);
+            await this.logSyncAction(modKey, item.id, 'upload_skipped', 'missing_parent', skipMsg);
+            continue;
+          }
 
           // If attachments present but user opted out, don't send heavy base64 to cloud
           if (!options.uploadAttachments && payload.uploadedDocuments) {
@@ -361,9 +568,16 @@ class SyncService {
             }
           }
 
-          if (res?.data?._id) {
+          const remoteId = res?.data?._id;
+          if (remoteId) {
+            // Update mapping
+            idMap[item.id] = remoteId;
+            if (item.item[config.keyField]) {
+              idMap[String(item.item[config.keyField]).trim()] = remoteId;
+            }
+
             await repoRef.update(item.id, {
-              _id: res.data._id,
+              _id: remoteId,
               _syncStatus: 'synced',
               _lastSyncedAt: new Date().toISOString(),
             });
@@ -393,6 +607,15 @@ class SyncService {
           };
 
           await repoRef.create(docToInsert);
+
+          // Update ID mapping
+          if (docToInsert.id && docToInsert._id) {
+            idMap[docToInsert.id] = docToInsert._id;
+          }
+          if (docToInsert[config.keyField] && docToInsert._id) {
+            idMap[String(docToInsert[config.keyField]).trim()] = docToInsert._id;
+          }
+
           await this.logSyncAction(modKey, docToInsert.id, 'download', 'success');
           results.downloaded++;
         } catch (err) {
@@ -409,13 +632,11 @@ class SyncService {
           if (userChoice === 'keep_local') {
             // Overwrite cloud with local version
             const targetCloudId = item.remoteItem._id || item.remoteItem.id;
-            const payload = { ...item.localItem };
-            delete payload._syncStatus;
-            delete payload._lastModified;
-            delete payload._conflictDetails;
+            const payload = this.preparePayloadForUpload(modKey, item.localItem, idMap);
 
             if (targetCloudId) {
               await apiRef.update(targetCloudId, payload);
+              idMap[item.id] = targetCloudId;
             }
             await repoRef.update(item.id, {
               _syncStatus: 'synced',
@@ -434,6 +655,9 @@ class SyncService {
               _lastSyncedAt: new Date().toISOString(),
               _conflictDetails: null,
             };
+            if (item.localItem.id && item.remoteItem._id) {
+              idMap[item.localItem.id] = item.remoteItem._id;
+            }
             await repoRef.update(item.id, cloudDoc);
             await this.logSyncAction(modKey, item.id, 'conflict_keep_cloud', 'success');
             results.conflictsResolved++;
@@ -456,6 +680,9 @@ class SyncService {
               _lastSyncedAt: new Date().toISOString(),
               _conflictDetails: null,
             };
+            if (item.localItem.id && item.remoteItem._id) {
+              idMap[item.localItem.id] = item.remoteItem._id;
+            }
             await repoRef.update(item.id, cloudDoc);
             await this.logSyncAction(modKey, item.id, 'conflict_keep_both', 'success');
             results.conflictsResolved++;
@@ -467,8 +694,12 @@ class SyncService {
       }
     }
 
+    // Persist final ID map
+    await this.savePersistentIdMap(idMap);
+
     return results;
   }
 }
 
 export const syncService = new SyncService();
+

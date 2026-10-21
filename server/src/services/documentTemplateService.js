@@ -123,7 +123,7 @@ export const generateAgreementWordDocument = (agreement) => {
       <td>${agreement.workOrderNumber}</td>
     </tr>
     <tr>
-      <td class="label">Tender Number (M)</td>
+      <td class="label">Tender Number</td>
       <td>${agreement.tenderNumber || '-'}</td>
     </tr>
     <tr>
@@ -145,12 +145,12 @@ export const generateAgreementWordDocument = (agreement) => {
   </table>
 
   <div class="content-body">
-${agreement.content || `MEMORANDUM OF AGREEMENT executed on this date between the Governor of the State acting through the Executive Engineer, Public Works Division (hereinafter referred to as the "Authority") of the First Part, and ${agreement.contractorName} (hereinafter referred to as the "Contractor") of the Second Part.
+${agreement.content || `MEMORANDUM OF AGREEMENT executed on this date between TenderFlow Infrastructure Operations (hereinafter referred to as the "Enterprise") of the First Part, and ${agreement.contractorName} (hereinafter referred to as the "Contractor") of the Second Part.
 
 WHEREAS the Contractor has agreed to perform, execute and maintain the works under Work Order Ref No: ${agreement.workOrderNumber} in accordance with the sanctioned terms, drawings and general conditions of contract.
 
-1. SCOPE OF PERFORMANCE: The Contractor shall execute all specified civil, structural and allied works in strict conformity with departmental specifications.
-2. SECURITY DEPOSIT & STATUTORY RETENTION: A security deposit retention shall be regulated in accordance with statutory PWD financial rules.
+1. SCOPE OF PERFORMANCE: The Contractor shall execute all specified civil, structural and allied works in strict conformity with project specifications.
+2. SECURITY DEPOSIT & RETENTION: A security deposit retention shall be regulated in accordance with standard General Conditions of Contract (GCC).
 3. COMPLETION & ARBITRATION: Any claim or dispute arising out of this agreement shall be settled through official arbitration under the Indian Arbitration and Conciliation Act.`}
   </div>
 
@@ -163,9 +163,9 @@ WHEREAS the Contractor has agreed to perform, execute and maintain the works und
       </td>
       <td style="text-align: right;">
         <div style="border-top: 1pt solid #000; width: 180pt; margin-left: auto; margin-bottom: 4pt;"></div>
-        <strong>Executive Engineer</strong><br/>
-        Public Works Division No. 1<br/>
-        (For and on behalf of the Governor)
+        <strong>Operations Director / Project Head</strong><br/>
+        Contract & Execution Division<br/>
+        (For and on behalf of the Enterprise)
       </td>
     </tr>
   </table>
@@ -207,12 +207,12 @@ export const generateFmdSdWordDocument = (fmdItem, language = 'en') => {
 </style>
 </head>
 <body>
-  <h1>${isHindi ? 'लोक निर्माण विभाग' : 'PUBLIC WORKS DEPARTMENT'}</h1>
+  <h1>${isHindi ? 'अनुबंध एवं निर्माण प्रबंधन प्रणाली' : 'CONTRACT & PROJECT MANAGEMENT ENTERPRISE'}</h1>
   <h2>${isHindi ? 'सुरक्षा जमा (SD) एवं FMD सत्यापन तथा अभिरक्षा प्रमाण-पत्र' : 'SECURITY DEPOSIT (SD) & FMD CUSTODY CERTIFICATE'}</h2>
 
   <table class="table">
     <tr>
-      <td class="label">${isHindi ? 'निविदा संख्या (Tender No)' : 'Tender Number (M)'}</td>
+      <td class="label">${isHindi ? 'निविदा संख्या (Tender No)' : 'Tender Number'}</td>
       <td><strong>${fmdItem.tenderNumber}</strong></td>
     </tr>
     <tr>
@@ -265,13 +265,13 @@ export const generateFmdSdWordDocument = (fmdItem, language = 'en') => {
     <tr>
       <td>
         <div style="border-top: 1pt solid #000; width: 160pt; margin-bottom: 4pt;"></div>
-        ${isHindi ? 'प्रभागीय लेखाकार (DA)' : 'Divisional Accountant'}<br/>
-        Accounts Branch
+        ${isHindi ? 'वित्त एवं लेखा अधिकारी' : 'Finance & Accounts Manager'}<br/>
+        Accounts & Contracts Branch
       </td>
       <td style="text-align: right;">
         <div style="border-top: 1pt solid #000; width: 160pt; margin-left: auto; margin-bottom: 4pt;"></div>
-        ${isHindi ? 'कार्यपालक अभियंता' : 'Executive Engineer'}<br/>
-        Public Works Division
+        ${isHindi ? 'परियोजना निदेशक / अधिकृत अधिकारी' : 'Project Director / Operations Manager'}<br/>
+        Contract & Project Management
       </td>
     </tr>
   </table>

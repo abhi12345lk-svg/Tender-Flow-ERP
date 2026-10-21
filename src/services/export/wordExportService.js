@@ -89,7 +89,7 @@ export const generateAgreementDocx = async (agreement, options = {}) => {
     ],
     [
       { label: 'Work Order Reference', val: agreement.workOrderNumber || '-' },
-      { label: 'Tender Number (M)', val: agreement.tenderNumber || '-' },
+      { label: 'Tender Number', val: agreement.tenderNumber || '-' },
     ],
     [
       { label: 'Contractor / Agency', val: agreement.contractorName || '-' },
@@ -150,10 +150,10 @@ export const generateAgreementDocx = async (agreement, options = {}) => {
     });
   });
 
-  const agreementBodyText = agreement.content || `MEMORANDUM OF AGREEMENT executed on this date between the Executive Engineer, Public Works Department for and on behalf of the Governor (First Party) and ${agreement.contractorName || 'the Contractor'} (Second Party/Contractor).
+  const agreementBodyText = agreement.content || `MEMORANDUM OF AGREEMENT executed on this date between TenderFlow Infrastructure Operations (First Party) and ${agreement.contractorName || 'the Contractor'} (Second Party/Contractor).
 
 1. SCOPE OF PERFORMANCE: The Contractor undertakes to execute, complete and maintain in conformity with the provisions of this contract all works described in Work Order No. ${agreement.workOrderNumber || 'sanctioned works'}.
-2. LIQUIDATED DAMAGES & RETENTION: The Security Deposit and statutory retention shall be regulated strictly according to standard PWD General Conditions of Contract (GCC).
+2. LIQUIDATED DAMAGES & RETENTION: The Security Deposit and statutory retention shall be regulated strictly according to standard General Conditions of Contract (GCC).
 3. STATUTORY COMPLIANCE: The Contractor shall comply with all statutory requirements including GST deductions, Labour Cess, and Income Tax withholding.
 4. DISPUTE RESOLUTION: Any dispute or difference arising out of or in connection with this agreement shall be settled through official arbitration under the Indian Arbitration and Conciliation Act.`;
 
@@ -270,7 +270,7 @@ export const generateAgreementDocx = async (agreement, options = {}) => {
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
                 children: [
-                  new TextRun({ text: 'TenderFlow ERP — Standard PWD Agreement | Page ', size: 16, color: '94A3B8', font: 'Calibri' }),
+                  new TextRun({ text: 'TenderFlow ERP — Standard Contract Agreement | Page ', size: 16, color: '94A3B8', font: 'Calibri' }),
                   new TextRun({
                     children: [PageNumber.CURRENT],
                     size: 16,
@@ -288,7 +288,7 @@ export const generateAgreementDocx = async (agreement, options = {}) => {
             spacing: { after: 60 },
             children: [
               new TextRun({
-                text: 'GOVERNMENT OF STATE / PUBLIC WORKS DEPARTMENT',
+                text: 'CONTRACT & INFRASTRUCTURE PROJECT MANAGEMENT ENTERPRISE',
                 bold: true,
                 size: 24,
                 font: 'Calibri',
@@ -301,7 +301,7 @@ export const generateAgreementDocx = async (agreement, options = {}) => {
             spacing: { after: 60 },
             children: [
               new TextRun({
-                text: 'OFFICE OF THE EXECUTIVE ENGINEER, DIVISION NO. 1',
+                text: 'COMMERCIAL OPERATIONS & CONTRACT AUDIT DIVISION',
                 bold: true,
                 size: 22,
                 font: 'Calibri',
@@ -327,7 +327,7 @@ export const generateAgreementDocx = async (agreement, options = {}) => {
             spacing: { after: 240 },
             children: [
               new TextRun({
-                text: `Template Reference: ${agreement.templateType || 'Standard PWD Contract Form F-2'}`,
+                text: `Template Reference: ${agreement.templateType || 'Standard Contract Agreement Form F-2'}`,
                 italics: true,
                 size: 18,
                 font: 'Calibri',
@@ -390,7 +390,7 @@ export const generateFmdCustodyDocx = async (fmdItem, language = 'en', editableN
 
   const metaRows = [
     [
-      { label: isHindi ? 'निविदा संख्या (Tender No)' : 'Tender Number (M)', val: fmdItem.tenderNumber || '-' },
+      { label: isHindi ? 'निविदा संख्या (Tender No)' : 'Tender Number', val: fmdItem.tenderNumber || '-' },
       { label: isHindi ? 'संबंधित कार्य आदेश' : 'Related Work Order', val: fmdItem.workOrderNumber || 'Direct Tender Record' },
     ],
     [
@@ -571,7 +571,7 @@ export const generateFmdCustodyDocx = async (fmdItem, language = 'en', editableN
               color: '0F172A',
             }),
             new TextRun({
-              text: `for the work "${fmdItem.tenderTitle || 'Departmental Work'}" (Tender Ref: ${fmdItem.tenderNumber}) has been verified and deposited under official departmental custody in compliance with PWD financial regulations.`,
+              text: `for the work "${fmdItem.tenderTitle || 'Contract Work'}" (Tender Ref: ${fmdItem.tenderNumber}) has been verified and deposited under official custody in compliance with financial regulations.`,
               size: 21,
               font: 'Calibri',
               color: '1E293B',
@@ -733,7 +733,7 @@ export const generateFmdCustodyDocx = async (fmdItem, language = 'en', editableN
                 alignment: AlignmentType.RIGHT,
                 children: [
                   new TextRun({
-                    text: isHindi ? 'कार्यपालक अभियंता' : 'Executive Engineer',
+                    text: isHindi ? 'परियोजना निदेशक / अधिकृत अधिकारी' : 'Project Director / Operations Manager',
                     bold: true,
                     size: 21,
                     font: 'Calibri',
@@ -745,7 +745,7 @@ export const generateFmdCustodyDocx = async (fmdItem, language = 'en', editableN
                 alignment: AlignmentType.RIGHT,
                 children: [
                   new TextRun({
-                    text: isHindi ? 'लोक निर्माण विभाग' : 'Public Works Department',
+                    text: isHindi ? 'अनुबंध एवं निर्माण प्रबंधन' : 'Contract & Project Management',
                     size: 18,
                     color: '64748B',
                     font: 'Calibri',
@@ -800,7 +800,7 @@ export const generateFmdCustodyDocx = async (fmdItem, language = 'en', editableN
             spacing: { after: 60 },
             children: [
               new TextRun({
-                text: isHindi ? 'लोक निर्माण विभाग (भवन एवं मार्ग)' : 'PUBLIC WORKS DEPARTMENT (GOVERNMENT OF STATE)',
+                text: isHindi ? 'अनुबंध एवं निर्माण प्रबंधन प्रणाली' : 'CONTRACT & PROJECT MANAGEMENT ENTERPRISE',
                 bold: true,
                 size: 24,
                 font: 'Calibri',
@@ -827,8 +827,8 @@ export const generateFmdCustodyDocx = async (fmdItem, language = 'en', editableN
             children: [
               new TextRun({
                 text: isHindi
-                  ? 'कार्यालय कार्यपालक अभियंता, खंड-1 | प्रपत्र संख्या: PWD/FMD-SD/2024'
-                  : 'Office of the Executive Engineer, Division No. 1 | Form Ref: PWD/FMD-SD/2024',
+                  ? 'प्रबंधन एवं वित्त प्रभाग | प्रपत्र संख्या: TF-SD/2024'
+                  : 'Finance & Contracts Division | Form Ref: TF-SD/2024',
                 italics: true,
                 size: 18,
                 font: 'Calibri',

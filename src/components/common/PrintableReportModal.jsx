@@ -3,10 +3,11 @@ import { Printer, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle } from
 import Modal from './Modal';
 import Button from './Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { printElement } from '../../utils/printHelper';
 
 /**
  * PrintableReportModal
- * Renders an official government A4 printable report with full print-to-PDF support,
+ * Renders an official commercial A4 printable report with full print-to-PDF support,
  * multi-page repeating headers, bilingual Hindi/English headers, and direct Excel export.
  * Operates 100% offline from local IndexedDB data.
  */
@@ -24,7 +25,9 @@ export default function PrintableReportModal({
   if (!isOpen) return null;
 
   const handlePrint = () => {
-    window.print();
+    printElement('printable-document', {
+      title: title?.replace(/[\/\\]/g, '_') || 'TenderFlow_Report',
+    });
   };
 
   const isEmpty = !data || data.length === 0;
@@ -33,14 +36,14 @@ export default function PrintableReportModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={title || 'Official PWD Printable Report'}
+      title={title || 'Official Contract & Operations Printable Report'}
       subtitle={subtitle || `Active Financial Year: FY ${activeFY || 'ALL'}`}
       size="xl"
       footer={
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
           <div className="text-xs text-slate-500 flex items-center justify-center sm:justify-start gap-1.5">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Official Government PWD Standard A4 Report Format</span>
+            <span>Enterprise Standard A4 Report Format</span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -99,16 +102,16 @@ export default function PrintableReportModal({
             id="printable-document"
             className="bg-white p-4 sm:p-8 border border-slate-300 rounded-lg shadow-sm font-sans text-slate-900 space-y-4 sm:space-y-6 max-w-4xl mx-auto leading-relaxed"
           >
-            {/* Government Emblem & Header */}
+            {/* Enterprise Header */}
             <div className="text-center border-b-2 border-slate-900 pb-4">
               <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-slate-700">
-                GOVERNMENT OF STATE / सरकारी लोक निर्माण विभाग
+                CONTRACT & INFRASTRUCTURE PROJECT MANAGEMENT ENTERPRISE
               </h2>
               <h3 className="text-sm sm:text-base font-extrabold uppercase mt-1">
-                OFFICE OF THE EXECUTIVE ENGINEER, DIVISION NO. 1
+                COMMERCIAL OPERATIONS & CONTRACT AUDIT DIVISION
               </h3>
               <p className="text-xs font-semibold text-slate-800 mt-0.5">
-                {title || 'GOVERNMENT WORKS & STATUTORY REGISTER REPORT'}
+                {title || 'PROJECT OPERATIONS & CONTRACT REGISTER REPORT'}
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-500 mt-1 font-mono">
                 <span>Active FY: {activeFY || 'ALL'}</span>
@@ -138,8 +141,8 @@ export default function PrintableReportModal({
                   <thead className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
                     <tr>
                       <th className="p-2 border-r border-slate-300">#</th>
-                      <th className="p-2 border-r border-slate-300">Work Order No. (M)</th>
-                      <th className="p-2 border-r border-slate-300">Tender No. (M)</th>
+                      <th className="p-2 border-r border-slate-300">Work Order No.</th>
+                      <th className="p-2 border-r border-slate-300">Tender No.</th>
                       <th className="p-2 border-r border-slate-300">Work Description / Title</th>
                       <th className="p-2 border-r border-slate-300">Contractor</th>
                       <th className="p-2 border-r border-slate-300">TD</th>
@@ -334,7 +337,7 @@ export default function PrintableReportModal({
                   <thead className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
                     <tr>
                       <th className="p-2 border-r border-slate-300">#</th>
-                      <th className="p-2 border-r border-slate-300">Tender No. (M)</th>
+                      <th className="p-2 border-r border-slate-300">Tender No.</th>
                       <th className="p-2 border-r border-slate-300">Related WO</th>
                       <th className="p-2 border-r border-slate-300">Contractor</th>
                       <th className="p-2 border-r border-slate-300">Instrument Type</th>
@@ -378,10 +381,10 @@ export default function PrintableReportModal({
             {/* Official Certification Declaration */}
             <div className="pt-4 text-xs text-slate-600 border-t border-slate-200 space-y-1">
               <p>
-                <strong>Statutory Declaration:</strong> Certified that the entries shown above have been reconciled with the official Divisional Cash Book, Register of Works, and authenticated offline IndexedDB records of TenderFlow ERP.
+                <strong>Operational Declaration:</strong> Certified that the entries shown above have been reconciled with project ledgers, work contracts, and authenticated records of TenderFlow ERP.
               </p>
               <p className="text-[11px] text-slate-400">
-                This document is generated client-side from local government records and is legally authenticated under departmental works audit rules.
+                This document is generated client-side from local project records for operational, contract tracking, and commercial audit purposes.
               </p>
             </div>
 
@@ -391,8 +394,8 @@ export default function PrintableReportModal({
                 <p className="text-slate-500 font-medium">Reconciled & Checked by:</p>
                 <div>
                   <div className="border-t border-slate-400 w-44 sm:w-48 mb-1"></div>
-                  <p className="font-bold text-slate-900">Divisional Accountant (प्रभागीय लेखाकार)</p>
-                  <p className="text-slate-500 text-[11px]">Accounts Branch, Division No. 1</p>
+                  <p className="font-bold text-slate-900">Finance & Accounts Manager</p>
+                  <p className="text-slate-500 text-[11px]">Finance & Commercial Operations</p>
                 </div>
               </div>
 
@@ -400,8 +403,8 @@ export default function PrintableReportModal({
                 <p className="text-slate-500 font-medium">Approved & Authenticated by:</p>
                 <div>
                   <div className="border-t border-slate-400 w-44 sm:w-48 mb-1 sm:ml-auto"></div>
-                  <p className="font-bold text-slate-900">Executive Engineer (कार्यपालक अभियंता)</p>
-                  <p className="text-slate-500 text-[11px]">Public Works Division No. 1</p>
+                  <p className="font-bold text-slate-900">Operations Director / Project Head</p>
+                  <p className="text-slate-500 text-[11px]">Contract & Execution Management</p>
                 </div>
               </div>
             </div>

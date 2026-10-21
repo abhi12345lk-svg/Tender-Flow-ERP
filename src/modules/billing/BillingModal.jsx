@@ -4,8 +4,9 @@ import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import Button from '../../components/common/Button';
 import { useApp } from '../../context/AppContext';
-import { calculateGST, calculateNetBilling, formatCurrency } from '../../utils/formatters';
-import { Calculator, AlertCircle, Percent } from 'lucide-react';
+import { calculateBillingBreakdown, DEFAULT_BILLING_RATES } from '../../services/billing/billingCalculationConfig';
+import { formatCurrency, formatDate } from '../../utils/formatters';
+import { Calculator, AlertCircle, Percent, Info, ShieldAlert } from 'lucide-react';
 
 export default function BillingModal({ isOpen, onClose, onSave, editingBilling }) {
   const { workOrders, subdivisions } = useApp();
@@ -22,7 +23,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
     dateOfCompletion: '',
     dateOfHandover: '',
     amount: '', // Basic amount
-    gstRate: 18, // Configurable tax assumption
+    gstRate: DEFAULT_BILLING_RATES.gst.defaultRate, // Configurable tax assumption
     status: 'Submitted',
     deductions: {
       sdAmount: '',
@@ -30,6 +31,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
       labourCess: '',
       royalty: '',
       penalty: '',
+      gstTdsAmount: '',
     },
     remarks: '',
   });
@@ -50,7 +52,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
         dateOfCompletion: editingBilling.dateOfCompletion || '',
         dateOfHandover: editingBilling.dateOfHandover || '',
         amount: editingBilling.amount ?? '',
-        gstRate: editingBilling.gstRate ?? 18,
+        gstRate: editingBilling.gstRate ?? DEFAULT_BILLING_RATES.gst.defaultRate,
         status: editingBilling.status || 'Submitted',
         deductions: {
           sdAmount: editingBilling.deductions?.sdAmount ?? '',
@@ -58,13 +60,14 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
           labourCess: editingBilling.deductions?.labourCess ?? '',
           royalty: editingBilling.deductions?.royalty ?? '',
           penalty: editingBilling.deductions?.penalty ?? '',
+          gstTdsAmount: editingBilling.deductions?.gstTdsAmount ?? '',
         },
         remarks: editingBilling.remarks || '',
       });
     } else {
       const defaultWo = workOrders[0];
       setFormData({
-        invoiceNumber: `RA-0${Math.floor(1 + Math.random() * 9)}/PWD/${new Date().getFullYear()}`,
+        invoiceNumber: `RA-0${Math.floor(1 + Math.random() * 9)}/TF/${new Date().getFullYear()}`,
         invoiceDate: new Date().toISOString().split('T')[0],
         workOrderId: defaultWo?.id || '',
         workOrderNumber: defaultWo?.workOrderNumber || '',
@@ -75,7 +78,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
         dateOfCompletion: '',
         dateOfHandover: '',
         amount: '',
-        gstRate: 18,
+        gstRate: DEFAULT_BILLING_RATES.gst.defaultRate,
         status: 'Submitted',
         deductions: {
           sdAmount: '',
@@ -83,6 +86,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
           labourCess: '',
           royalty: '',
           penalty: '',
+          gstTdsAmount: '',
         },
         remarks: '',
       });
@@ -135,10 +139,9 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
     }));
   };
 
-  // Calculations
-  const baseAmt = parseFloat(formData.amount) || 0;
-  const gstCalculations = calculateGST(baseAmt, formData.gstRate);
-  const netCalculations = calculateNetBilling(gstCalculations.totalAmount, formData.deductions);
+  // Centralized billing breakdown calculation
+  const breakdown = calculateBillingBreakdown(formData.amount, formData.gstRate, formData.deductions);
+  const { deductionBreakdown } = breakdown;
 
   const validate = () => {
     const errs = {};
@@ -168,19 +171,20 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
 
     const sanitizedData = {
       ...formData,
-      amount: baseAmt,
-      gstRate: Number(formData.gstRate) || 0,
-      gstAmount: gstCalculations.gstAmount,
-      totalAmount: gstCalculations.totalAmount,
+      amount: breakdown.baseAmount,
+      gstRate: breakdown.gstRate,
+      gstAmount: breakdown.gstAmount,
+      totalAmount: breakdown.totalAmount,
       deductions: {
-        sdAmount: Number(formData.deductions.sdAmount) || 0,
-        tdsAmount: Number(formData.deductions.tdsAmount) || 0,
-        labourCess: Number(formData.deductions.labourCess) || 0,
-        royalty: Number(formData.deductions.royalty) || 0,
-        penalty: Number(formData.deductions.penalty) || 0,
+        sdAmount: breakdown.deductions.sdAmount,
+        tdsAmount: breakdown.deductions.tdsAmount,
+        labourCess: breakdown.deductions.labourCess,
+        royalty: breakdown.deductions.royalty,
+        penalty: breakdown.deductions.penalty,
+        gstTdsAmount: breakdown.deductions.gstTdsAmount,
       },
-      totalDeductions: netCalculations.totalDeductions,
-      netPayable: netCalculations.netPayable,
+      totalDeductions: breakdown.totalDeductions,
+      netPayable: breakdown.netPayable,
     };
 
     onSave(sanitizedData);
@@ -251,7 +255,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
             onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
             required
             error={errors.invoiceNumber}
-            placeholder="e.g. RA-01/PWD/2024"
+            placeholder="e.g. RA-01/TF/2024"
           />
 
           <Input
@@ -320,7 +324,7 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
               onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })}
               required
               error={errors.gstRate}
-              helperText={`GST Amount: ${formatCurrency(gstCalculations.gstAmount)}`}
+              helperText={`GST Amount: ${formatCurrency(breakdown.gstAmount)}`}
             />
 
             <div className="w-full">
@@ -328,10 +332,10 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
                 Total Amount (Incl. GST)
               </label>
               <div className="rounded-md border border-slate-300 bg-slate-100/90 py-2 px-3 text-sm font-bold text-blue-900 font-mono min-h-[40px] sm:min-h-0 flex items-center">
-                {formatCurrency(gstCalculations.totalAmount)}
+                {formatCurrency(breakdown.totalAmount)}
               </div>
               <span className="text-[10px] text-slate-500 mt-1 block">
-                CGST: {formatCurrency(gstCalculations.cgst)} | SGST: {formatCurrency(gstCalculations.sgst)}
+                CGST: {formatCurrency(breakdown.cgst)} | SGST: {formatCurrency(breakdown.sgst)}
               </span>
             </div>
           </div>
@@ -341,70 +345,140 @@ export default function BillingModal({ isOpen, onClose, onSave, editingBilling }
         <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              Statutory Deduction Form (PWD Code Rules)
+              Statutory Deduction Form (Standard Enterprise Rates & Calculation Bases)
             </h4>
             <span className="text-[11px] text-slate-500">Deductions withheld at source</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
-            <Input
-              label="SD Deduction"
-              name="sdAmount"
-              type="number"
-              prefix="₹"
-              placeholder="5% SD"
-              value={formData.deductions.sdAmount}
-              onChange={(e) => handleDeductionChange('sdAmount', e.target.value)}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">
+                  SD Retention ({DEFAULT_BILLING_RATES.sd.defaultRate}% on Base)
+                </span>
+                {deductionBreakdown.sd.isOverridden && (
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                    Override
+                  </span>
+                )}
+              </div>
+              <Input
+                name="sdAmount"
+                type="number"
+                prefix="₹"
+                placeholder={`Auto: ${formatCurrency(deductionBreakdown.sd.computedAmount)}`}
+                value={formData.deductions.sdAmount}
+                onChange={(e) => handleDeductionChange('sdAmount', e.target.value)}
+                helperText={`Standard: ${DEFAULT_BILLING_RATES.sd.defaultRate}% on base (₹${formatCurrency(deductionBreakdown.sd.computedAmount)})`}
+              />
+            </div>
 
-            <Input
-              label="IT-TDS (2%)"
-              name="tdsAmount"
-              type="number"
-              prefix="₹"
-              placeholder="TDS"
-              value={formData.deductions.tdsAmount}
-              onChange={(e) => handleDeductionChange('tdsAmount', e.target.value)}
-            />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">
+                  IT-TDS ({DEFAULT_BILLING_RATES.itTds.defaultRate}% on Base)
+                </span>
+                {deductionBreakdown.itTds.isOverridden && (
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                    Override
+                  </span>
+                )}
+              </div>
+              <Input
+                name="tdsAmount"
+                type="number"
+                prefix="₹"
+                placeholder={`Auto: ${formatCurrency(deductionBreakdown.itTds.computedAmount)}`}
+                value={formData.deductions.tdsAmount}
+                onChange={(e) => handleDeductionChange('tdsAmount', e.target.value)}
+                helperText={`Sec 194C: ${DEFAULT_BILLING_RATES.itTds.defaultRate}% on base (₹${formatCurrency(deductionBreakdown.itTds.computedAmount)})`}
+              />
+            </div>
 
-            <Input
-              label="Labour Cess (1%)"
-              name="labourCess"
-              type="number"
-              prefix="₹"
-              placeholder="Cess"
-              value={formData.deductions.labourCess}
-              onChange={(e) => handleDeductionChange('labourCess', e.target.value)}
-            />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">
+                  Labour Cess ({DEFAULT_BILLING_RATES.labourCess.defaultRate}% on Base)
+                </span>
+                {deductionBreakdown.labourCess.isOverridden && (
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                    Override
+                  </span>
+                )}
+              </div>
+              <Input
+                name="labourCess"
+                type="number"
+                prefix="₹"
+                placeholder={`Auto: ${formatCurrency(deductionBreakdown.labourCess.computedAmount)}`}
+                value={formData.deductions.labourCess}
+                onChange={(e) => handleDeductionChange('labourCess', e.target.value)}
+                helperText={`BOCW: ${DEFAULT_BILLING_RATES.labourCess.defaultRate}% on base (₹${formatCurrency(deductionBreakdown.labourCess.computedAmount)})`}
+              />
+            </div>
 
-            <Input
-              label="Royalty / Material"
-              name="royalty"
-              type="number"
-              prefix="₹"
-              placeholder="Royalty"
-              value={formData.deductions.royalty}
-              onChange={(e) => handleDeductionChange('royalty', e.target.value)}
-            />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">
+                  GST TDS ({DEFAULT_BILLING_RATES.gstTds.defaultRate}% on Base)
+                </span>
+                {deductionBreakdown.gstTds.isOverridden && (
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                    Override
+                  </span>
+                )}
+              </div>
+              <Input
+                name="gstTdsAmount"
+                type="number"
+                prefix="₹"
+                placeholder="Optional (Contract > ₹2.5L)"
+                value={formData.deductions.gstTdsAmount}
+                onChange={(e) => handleDeductionChange('gstTdsAmount', e.target.value)}
+                helperText={`Sec 51: ${DEFAULT_BILLING_RATES.gstTds.defaultRate}% on base if applicable`}
+              />
+            </div>
 
-            <Input
-              label="Penalties / Withheld"
-              name="penalty"
-              type="number"
-              prefix="₹"
-              placeholder="Penalty"
-              value={formData.deductions.penalty}
-              onChange={(e) => handleDeductionChange('penalty', e.target.value)}
-            />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">Mineral Royalty</span>
+                <span className="text-[10px] text-slate-400">Manual / Seigniorage</span>
+              </div>
+              <Input
+                name="royalty"
+                type="number"
+                prefix="₹"
+                placeholder="0.00"
+                value={formData.deductions.royalty}
+                onChange={(e) => handleDeductionChange('royalty', e.target.value)}
+                helperText="Seigniorage per contract schedule"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">Penalty / Withheld</span>
+                <span className="text-[10px] text-slate-400">Contractual</span>
+              </div>
+              <Input
+                name="penalty"
+                type="number"
+                prefix="₹"
+                placeholder="0.00"
+                value={formData.deductions.penalty}
+                onChange={(e) => handleDeductionChange('penalty', e.target.value)}
+                helperText="Liquidated damages or retention"
+              />
+            </div>
           </div>
 
           {/* Computed Net Summary */}
           <div className="mt-2 pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
             <div className="text-slate-600 text-center sm:text-left">
-              Total Deductions: <strong className="text-rose-600">{formatCurrency(netCalculations.totalDeductions)}</strong>
+              Total Deductions: <strong className="text-rose-600">{formatCurrency(breakdown.totalDeductions)}</strong>
             </div>
             <div className="text-xs sm:text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-md border border-emerald-200 w-full sm:w-auto text-center sm:text-right">
-              Net Payable to Contractor: {formatCurrency(netCalculations.netPayable)}
+              Net Disbursable to Contractor: {formatCurrency(breakdown.netPayable)}
             </div>
           </div>
         </div>

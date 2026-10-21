@@ -135,13 +135,48 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
   });
 
-  // 3. Financial Year CRUD & Validation Tests
+  // 3. Authorization Security Verification Across Business Routes
+  describe('Authorization Security Gating (/api/v1/*)', () => {
+    it('should reject unauthenticated GET /api/v1/financial-years with 401 Unauthorized', async () => {
+      const res = await request(app).get('/api/v1/financial-years');
+      assert.strictEqual(res.statusCode, 401);
+      assert.strictEqual(res.body.error, 'Unauthorized');
+    });
+
+    it('should reject unauthenticated POST /api/v1/work-orders with 401 Unauthorized', async () => {
+      const res = await request(app).post('/api/v1/work-orders').send({});
+      assert.strictEqual(res.statusCode, 401);
+    });
+
+    it('should reject unauthenticated GET /api/v1/agreements with 401 Unauthorized', async () => {
+      const res = await request(app).get('/api/v1/agreements');
+      assert.strictEqual(res.statusCode, 401);
+    });
+
+    it('should reject unauthenticated GET /api/v1/billing with 401 Unauthorized', async () => {
+      const res = await request(app).get('/api/v1/billing');
+      assert.strictEqual(res.statusCode, 401);
+    });
+
+    it('should reject unauthenticated GET /api/v1/subdivisions with 401 Unauthorized', async () => {
+      const res = await request(app).get('/api/v1/subdivisions');
+      assert.strictEqual(res.statusCode, 401);
+    });
+
+    it('should reject unauthenticated GET /api/v1/fmd-sd with 401 Unauthorized', async () => {
+      const res = await request(app).get('/api/v1/fmd-sd');
+      assert.strictEqual(res.statusCode, 401);
+    });
+  });
+
+  // 4. Financial Year CRUD & Validation Tests
   describe('Financial Year Module (/api/v1/financial-years)', () => {
     let createdFyId = '';
 
     it('should reject invalid date range where end date is before start date', async () => {
       const res = await request(app)
         .post('/api/v1/financial-years')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           label: '2024-2025',
           startDate: '2024-04-01',
@@ -155,6 +190,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     it('should create a valid financial year', async () => {
       const res = await request(app)
         .post('/api/v1/financial-years')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           label: '2024-2025',
           startDate: '2024-04-01',
@@ -172,6 +208,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     it('should reject duplicate financial year label', async () => {
       const res = await request(app)
         .post('/api/v1/financial-years')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           label: '2024-2025',
           startDate: '2025-04-01',
@@ -183,7 +220,9 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
 
     it('should list financial years with pagination', async () => {
-      const res = await request(app).get('/api/v1/financial-years?page=1&limit=10');
+      const res = await request(app)
+        .get('/api/v1/financial-years?page=1&limit=10')
+        .set('Authorization', `Bearer ${authToken}`);
       assert.strictEqual(res.statusCode, 200);
       assert.ok(Array.isArray(res.body.data));
       assert.strictEqual(res.body.data.length, 1);
@@ -192,6 +231,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     it('should update financial year details', async () => {
       const res = await request(app)
         .patch(`/api/v1/financial-years/${createdFyId}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ description: 'Updated operating notes' });
 
       assert.strictEqual(res.statusCode, 200);
@@ -199,19 +239,22 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
 
     it('should handle invalid MongoDB ID gracefully', async () => {
-      const res = await request(app).get('/api/v1/financial-years/invalid-object-id-123');
+      const res = await request(app)
+        .get('/api/v1/financial-years/invalid-object-id-123')
+        .set('Authorization', `Bearer ${authToken}`);
       assert.strictEqual(res.statusCode, 400);
       assert.strictEqual(res.body.error, 'InvalidId');
     });
   });
 
-  // 4. Subdivision CRUD Tests
+  // 5. Subdivision CRUD Tests
   describe('Subdivision Module (/api/v1/subdivisions)', () => {
     let createdSubId = '';
 
     it('should create a valid subdivision with code and name', async () => {
       const res = await request(app)
         .post('/api/v1/subdivisions')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           name: 'Subdivision I (Civil)',
           code: 'SD-01',
@@ -225,20 +268,23 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
 
     it('should list subdivisions including associated count metadata', async () => {
-      const res = await request(app).get('/api/v1/subdivisions');
+      const res = await request(app)
+        .get('/api/v1/subdivisions')
+        .set('Authorization', `Bearer ${authToken}`);
       assert.strictEqual(res.statusCode, 200);
       assert.ok(Array.isArray(res.body.data));
       assert.strictEqual(res.body.data[0].workOrderCount, 0);
     });
   });
 
-  // 5. Work Order CRUD & Preserved Labels Tests
+  // 6. Work Order CRUD & Preserved Labels Tests
   describe('Work Order Module (/api/v1/work-orders)', () => {
     let createdWoId = '';
 
     it('should reject work order missing mandatory fields Tender Number (M) or Work Order Number (M)', async () => {
       const res = await request(app)
         .post('/api/v1/work-orders')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           workOrderDate: '2024-05-15',
           workOrderAmount: 100000,
@@ -252,6 +298,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     it('should create work order preserving TD and mandatory (M) fields', async () => {
       const res = await request(app)
         .post('/api/v1/work-orders')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           tenderNumber: 'TN-TEST-001',
           workOrderNumber: 'WO-TEST-001',
@@ -278,6 +325,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     it('should reject duplicate Work Order Number', async () => {
       const res = await request(app)
         .post('/api/v1/work-orders')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           tenderNumber: 'TN-TEST-002',
           workOrderNumber: 'WO-TEST-001', // Duplicate
@@ -290,15 +338,15 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
 
     it('should filter work orders by status and financial year', async () => {
-      const res = await request(app).get(
-        '/api/v1/work-orders?status=Issued&financialYear=2024-2025'
-      );
+      const res = await request(app)
+        .get('/api/v1/work-orders?status=Issued&financialYear=2024-2025')
+        .set('Authorization', `Bearer ${authToken}`);
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.body.data.length, 1);
     });
   });
 
-  // 6. Agreement CRUD & Document Generation Tests
+  // 7. Agreement CRUD & Document Generation Tests
   describe('Agreement Module (/api/v1/agreements)', () => {
     let createdAgrId = '';
 
@@ -306,6 +354,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
       const wo = await WorkOrder.findOne();
       const res = await request(app)
         .post('/api/v1/agreements')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           workOrder: wo._id.toString(),
           workOrderNumber: wo.workOrderNumber,
@@ -326,7 +375,8 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
 
     it('should generate official Word (.doc) document for agreement', async () => {
       const res = await request(app)
-        .get(`/api/v1/agreements/${createdAgrId}/docx`);
+        .get(`/api/v1/agreements/${createdAgrId}/docx`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       assert.strictEqual(res.statusCode, 200);
       assert.match(res.headers['content-type'], /application\/msword/);
@@ -335,12 +385,13 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
   });
 
-  // 7. Billing Module Tests (Configurable GST and Statutory Deductions)
+  // 8. Billing Module Tests (Configurable GST and Statutory Deductions)
   describe('Billing Module (/api/v1/billing)', () => {
     it('should compute configurable GST and statutory deductions properly', async () => {
       const wo = await WorkOrder.findOne();
       const res = await request(app)
         .post('/api/v1/billing')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           workOrder: wo._id.toString(),
           workOrderNumber: wo.workOrderNumber,
@@ -368,11 +419,13 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
   });
 
-  // 8. Work Order Related Records Verification
+  // 9. Work Order Related Records Verification
   describe('Work Order Related Records Detail Workflow', () => {
     it('should return work order with populated related agreements and billing records', async () => {
       const wo = await WorkOrder.findOne();
-      const res = await request(app).get(`/api/v1/work-orders/${wo._id}`);
+      const res = await request(app)
+        .get(`/api/v1/work-orders/${wo._id}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       assert.strictEqual(res.statusCode, 200);
       assert.ok(res.body.data.related);
@@ -385,7 +438,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
     });
   });
 
-  // 9. FMD / SD Module Tests (Preserved FMD terminology, multipart upload, Word certificates)
+  // 10. FMD / SD Module Tests (Preserved FMD terminology, multipart upload, Word certificates)
   describe('FMD / SD Module (/api/v1/fmd-sd)', () => {
     let createdFmdId = '';
     let uploadedDocId = '';
@@ -394,6 +447,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
       const wo = await WorkOrder.findOne();
       const res = await request(app)
         .post('/api/v1/fmd-sd')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({
           tenderNumber: 'TN-FMD-999',
           tenderTitle: 'Construction of Sub-Station',
@@ -417,13 +471,17 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
 
     it('should generate official bilingual Word (.doc) custody certificates in Hindi and English', async () => {
       // English certificate
-      const resEn = await request(app).get(`/api/v1/fmd-sd/${createdFmdId}/docx?lang=en`);
+      const resEn = await request(app)
+        .get(`/api/v1/fmd-sd/${createdFmdId}/docx?lang=en`)
+        .set('Authorization', `Bearer ${authToken}`);
       assert.strictEqual(resEn.statusCode, 200);
       assert.match(resEn.headers['content-type'], /application\/msword/);
       assert.match(resEn.text, /SECURITY DEPOSIT/);
 
       // Hindi certificate with Unicode support
-      const resHi = await request(app).get(`/api/v1/fmd-sd/${createdFmdId}/docx?lang=hi`);
+      const resHi = await request(app)
+        .get(`/api/v1/fmd-sd/${createdFmdId}/docx?lang=hi`)
+        .set('Authorization', `Bearer ${authToken}`);
       assert.strictEqual(resHi.statusCode, 200);
       assert.match(resHi.headers['content-type'], /application\/msword/);
       assert.match(resHi.text, /सुरक्षा जमा/);
@@ -434,6 +492,7 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
 
       const res = await request(app)
         .post(`/api/v1/fmd-sd/${createdFmdId}/upload`)
+        .set('Authorization', `Bearer ${authToken}`)
         .attach('file', fakePdfContent, 'SBI_Bank_Guarantee_15Lakhs.pdf');
 
       assert.strictEqual(res.statusCode, 200);
@@ -448,7 +507,8 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
 
     it('should stream uploaded file download with proper headers', async () => {
       const res = await request(app)
-        .get(`/api/v1/fmd-sd/${createdFmdId}/documents/${uploadedDocId}/download`);
+        .get(`/api/v1/fmd-sd/${createdFmdId}/documents/${uploadedDocId}/download`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       assert.strictEqual(res.statusCode, 200);
       assert.match(res.headers['content-disposition'], /attachment/);
@@ -456,7 +516,8 @@ describe('TenderFlow ERP Backend API Test Suite', () => {
 
     it('should safely delete uploaded file from database and disk storage', async () => {
       const res = await request(app)
-        .delete(`/api/v1/fmd-sd/${createdFmdId}/documents/${uploadedDocId}`);
+        .delete(`/api/v1/fmd-sd/${createdFmdId}/documents/${uploadedDocId}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.body.data.uploadedDocuments.length, 0);

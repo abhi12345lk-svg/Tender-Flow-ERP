@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const workOrderCreateSchema = z.object({
-  tenderNumber: z.string().min(1, 'Tender Number (M) is mandatory'),
-  workOrderNumber: z.string().min(1, 'Work Order Number (M) is mandatory'),
+  tenderNumber: z.string().min(1, 'Tender Number is mandatory'),
+  workOrderNumber: z.string().min(1, 'Work Order Number is mandatory'),
   workOrderDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Valid Work Order Date is required',
   }),

@@ -51,8 +51,8 @@ export default function WorkOrdersPage() {
   // Filter logic
   const filteredData = workOrders.filter((wo) => {
     const matchesSearch =
-      wo.workOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      wo.tenderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      wo.workOrderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      wo.tenderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       wo.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       wo.contractorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       wo.td?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,7 +95,7 @@ export default function WorkOrdersPage() {
 
   const columns = [
     {
-      header: 'Work Order No. (M)',
+      header: 'Work Order No.',
       key: 'workOrderNumber',
       render: (val, row) => (
         <div>
@@ -219,7 +219,7 @@ export default function WorkOrdersPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Preserving mandated Tender Number (M), Work Order Number (M), TD and departmental accounting rules.
+            Manage work orders, baseline sanctioned amounts, project agreements, and execution timelines.
           </p>
         </div>
 

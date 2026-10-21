@@ -3,23 +3,26 @@ import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Receipt, Calendar, Building, Calculator, CheckCircle2, Printer } from 'lucide-react';
+import { printElement } from '../../utils/printHelper';
+import { calculateBillingBreakdown, DEFAULT_BILLING_RATES } from '../../services/billing/billingCalculationConfig';
+import { Receipt, Calendar, Building, Calculator, CheckCircle2, Printer, AlertCircle } from 'lucide-react';
 
 export default function BillingDetailModal({ isOpen, onClose, billing, onEdit }) {
   if (!billing) return null;
 
-  const deductions = billing.deductions || {};
-  const totalDeductions =
-    (deductions.sdAmount || 0) +
-    (deductions.tdsAmount || 0) +
-    (deductions.labourCess || 0) +
-    (deductions.royalty || 0) +
-    (deductions.penalty || 0);
-
-  const netPayable = billing.netPayable ?? (billing.totalAmount - totalDeductions);
+  const breakdown = calculateBillingBreakdown(
+    billing.amount,
+    billing.gstRate || DEFAULT_BILLING_RATES.gst.defaultRate,
+    billing.deductions || {}
+  );
+  const { deductionBreakdown } = breakdown;
+  const totalDeductions = billing.totalDeductions ?? breakdown.totalDeductions;
+  const netPayable = billing.netPayable ?? breakdown.netPayable;
 
   const handlePrint = () => {
-    window.print();
+    printElement('printable-document', {
+      title: `Bill_Voucher_${billing.invoiceNumber?.replace(/[\/\\]/g, '_') || 'Voucher'}`,
+    });
   };
 
   return (
@@ -87,7 +90,7 @@ export default function BillingDetailModal({ isOpen, onClose, billing, onEdit })
             <span className="font-semibold text-slate-800">{formatDate(billing.dateOfHandover)}</span>
           </div>
           <div className="p-2.5 border rounded-lg bg-white">
-            <span className="text-slate-400 block mb-0.5">Tender Number (M)</span>
+            <span className="text-slate-400 block mb-0.5">Tender Number</span>
             <span className="font-mono font-semibold text-slate-800">{billing.tenderNumber}</span>
           </div>
         </div>
@@ -117,36 +120,120 @@ export default function BillingDetailModal({ isOpen, onClose, billing, onEdit })
         </div>
 
         {/* Deductions Breakdown */}
+        {/* Deductions Breakdown */}
         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <h4 className="font-bold uppercase tracking-wider text-slate-800">
-              Statutory Deductions Applied
+              Statutory Deductions Breakdown & Calculation Bases
             </h4>
             <span className="font-bold text-rose-700 font-mono">
-              Total: {formatCurrency(totalDeductions)}
+              Total Deductions: {formatCurrency(totalDeductions)}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-            <div className="p-2 rounded bg-white border border-slate-200">
-              <span className="text-slate-400 block mb-0.5">SD (Retention)</span>
-              <span className="font-semibold text-slate-800 font-mono">{formatCurrency(deductions.sdAmount || 0)}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {/* SD */}
+            <div className="p-2.5 rounded bg-white border border-slate-200 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700">Security Deposit (SD)</span>
+                {deductionBreakdown.sd.isOverridden ? (
+                  <span className="text-[9px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">
+                    Manual Override
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
+                    {deductionBreakdown.sd.rate}% on Base
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] text-slate-400">Base: {formatCurrency(deductionBreakdown.sd.baseValue)}</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{formatCurrency(deductionBreakdown.sd.amount)}</span>
+              </div>
             </div>
-            <div className="p-2 rounded bg-white border border-slate-200">
-              <span className="text-slate-400 block mb-0.5">TDS (Income Tax)</span>
-              <span className="font-semibold text-slate-800 font-mono">{formatCurrency(deductions.tdsAmount || 0)}</span>
+
+            {/* IT TDS */}
+            <div className="p-2.5 rounded bg-white border border-slate-200 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700">Income Tax TDS (Sec 194C)</span>
+                {deductionBreakdown.itTds.isOverridden ? (
+                  <span className="text-[9px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">
+                    Manual Override
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
+                    {deductionBreakdown.itTds.rate}% on Base
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] text-slate-400">Base: {formatCurrency(deductionBreakdown.itTds.baseValue)}</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{formatCurrency(deductionBreakdown.itTds.amount)}</span>
+              </div>
             </div>
-            <div className="p-2 rounded bg-white border border-slate-200">
-              <span className="text-slate-400 block mb-0.5">Labour Cess (1%)</span>
-              <span className="font-semibold text-slate-800 font-mono">{formatCurrency(deductions.labourCess || 0)}</span>
+
+            {/* Labour Cess */}
+            <div className="p-2.5 rounded bg-white border border-slate-200 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700">Labour Welfare Cess (BOCW)</span>
+                {deductionBreakdown.labourCess.isOverridden ? (
+                  <span className="text-[9px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">
+                    Manual Override
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
+                    {deductionBreakdown.labourCess.rate}% on Base
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] text-slate-400">Base: {formatCurrency(deductionBreakdown.labourCess.baseValue)}</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{formatCurrency(deductionBreakdown.labourCess.amount)}</span>
+              </div>
             </div>
-            <div className="p-2 rounded bg-white border border-slate-200">
-              <span className="text-slate-400 block mb-0.5">Royalty</span>
-              <span className="font-semibold text-slate-800 font-mono">{formatCurrency(deductions.royalty || 0)}</span>
+
+            {/* GST TDS */}
+            <div className="p-2.5 rounded bg-white border border-slate-200 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700">GST TDS (Sec 51 CGST)</span>
+                {deductionBreakdown.gstTds.isOverridden ? (
+                  <span className="text-[9px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">
+                    Manual Override
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
+                    {deductionBreakdown.gstTds.amount > 0 ? `${deductionBreakdown.gstTds.rate}% on Base` : 'Not Applied'}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] text-slate-400">Base: {formatCurrency(deductionBreakdown.gstTds.baseValue)}</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{formatCurrency(deductionBreakdown.gstTds.amount)}</span>
+              </div>
             </div>
-            <div className="p-2 rounded bg-white border border-slate-200">
-              <span className="text-slate-400 block mb-0.5">Penalty / Withheld</span>
-              <span className="font-semibold text-slate-800 font-mono">{formatCurrency(deductions.penalty || 0)}</span>
+
+            {/* Mineral Royalty */}
+            <div className="p-2.5 rounded bg-white border border-slate-200 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700">Mineral Royalty</span>
+                <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded">Seigniorage</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] text-slate-400">Statutory Schedule</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{formatCurrency(deductionBreakdown.royalty.amount)}</span>
+              </div>
+            </div>
+
+            {/* Penalties / Withheld */}
+            <div className="p-2.5 rounded bg-white border border-slate-200 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700">Penalty / Withheld</span>
+                <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded">Contractual</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] text-slate-400">Liquidated Damages</span>
+                <span className="font-bold text-slate-900 font-mono text-xs">{formatCurrency(deductionBreakdown.penalty.amount)}</span>
+              </div>
             </div>
           </div>
 
@@ -173,13 +260,13 @@ export default function BillingDetailModal({ isOpen, onClose, billing, onEdit })
       <div id="printable-document" className="hidden print:block bg-white p-6 font-sans text-slate-900 space-y-4 max-w-3xl mx-auto">
         <div className="text-center border-b-2 border-slate-900 pb-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-700">
-            GOVERNMENT OF STATE / सरकारी लोक निर्माण विभाग
+            CONTRACT & INFRASTRUCTURE PROJECT MANAGEMENT ENTERPRISE
           </h2>
           <h3 className="text-sm font-extrabold uppercase mt-0.5">
-            OFFICE OF THE EXECUTIVE ENGINEER, DIVISION NO. 1
+            PROJECT BILLING & ACCOUNTS DISBURSEMENT DIVISION
           </h3>
           <p className="text-xs font-semibold text-slate-800">
-            CONTRACTOR'S RUNNING ACCOUNT BILL VOUCHER & STATUTORY SCRUTINY CERTIFICATE
+            CONTRACTOR'S RUNNING ACCOUNT BILL VOUCHER & SCRUTINY CERTIFICATE
           </p>
           <div className="flex justify-center gap-4 text-[10px] text-slate-500 mt-1 font-mono">
             <span>Invoice Ref: {billing.invoiceNumber}</span>
@@ -269,14 +356,14 @@ export default function BillingDetailModal({ isOpen, onClose, billing, onEdit })
           <div>
             <p className="text-slate-500 font-medium">Audited & Scrutinized by:</p>
             <div className="mt-8 border-t border-slate-400 w-44 mb-1"></div>
-            <p className="font-bold text-slate-900">Divisional Accountant (DA)</p>
-            <p className="text-slate-500 text-[11px]">Accounts Branch, Division 1</p>
+            <p className="font-bold text-slate-900">Finance & Accounts Manager</p>
+            <p className="text-slate-500 text-[11px]">Finance & Project Accounts</p>
           </div>
           <div className="text-right flex flex-col items-end">
             <p className="text-slate-500 font-medium">Passed for Payment by:</p>
             <div className="mt-8 border-t border-slate-400 w-44 mb-1 sm:ml-auto"></div>
-            <p className="font-bold text-slate-900">Executive Engineer</p>
-            <p className="text-slate-500 text-[11px]">Public Works Division No. 1</p>
+            <p className="font-bold text-slate-900">Operations Director / Project Head</p>
+            <p className="text-slate-500 text-[11px]">Contract & Execution Management</p>
           </div>
         </div>
       </div>

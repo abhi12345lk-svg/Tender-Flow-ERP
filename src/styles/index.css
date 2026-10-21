@@ -43,21 +43,30 @@
     print-color-adjust: exact !important;
   }
 
+  /* Break out of modal overlays and clipping during print */
+  .fixed, [role="dialog"], .overflow-hidden, .overflow-y-auto {
+    position: static !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    transform: none !important;
+  }
+
   body * {
     visibility: hidden;
   }
 
   #printable-document, #printable-document * {
-    visibility: visible;
+    visibility: visible !important;
   }
 
   #printable-document {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: #ffffff !important;
     color: #111827 !important;
     border: none !important;
